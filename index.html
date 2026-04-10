@@ -1983,21 +1983,32 @@ function closePopup() { document.getElementById('popup-overlay').classList.remov
 // ===== LAPORAN BULANAN =====
 function generateLaporan() {
   const bulanNames=['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  const bulan = document.getElementById('f-lap-bulan').value;
-  const tahun = document.getElementById('f-lap-tahun').value;
+  const bulan = parseInt(document.getElementById('f-lap-bulan').value);
+  const tahun = parseInt(document.getElementById('f-lap-tahun').value);
   const bulanNama = bulanNames[bulan];
   const kapolsub = getKapolsubsektor();
 
-  const masuk = kasusData.length;
-  const selesai = kasusData.filter(k=>k.status==='Selesai').length;
-  const proses = kasusData.filter(k=>k.status==='Proses').length;
-  const limpah = kasusData.filter(k=>k.status==='Limpah').length;
+  // Filter kasus berdasarkan bulan & tahun dari field waktu kejadian
+  function matchBulanTahun(waktu) {
+    if (!waktu) return false;
+    const bulanId = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+    const w = waktu.toLowerCase();
+    const bIdx = bulanId.findIndex(b => w.includes(b));
+    if (bIdx < 0) return false;
+    return (bIdx + 1) === bulan && w.includes(String(tahun));
+  }
+
+  const filtered = kasusData.filter(k => matchBulanTahun(k.waktu || k.waktuKejadian));
+  const masuk = filtered.length;
+  const selesai = filtered.filter(k=>k.status==='Selesai').length;
+  const proses = filtered.filter(k=>k.status==='Proses').length;
+  const limpah = filtered.filter(k=>k.status==='Limpah').length;
   const cr = masuk>0 ? Math.round(selesai/masuk*100) : 0;
   const totalPersonel = personelData.length;
   const aktifPersonel = personelData.filter(p=>p.status==='Aktif').length;
 
   const jenisCount = {};
-  for (const k of kasusData) jenisCount[k.jenis]=(jenisCount[k.jenis]||0)+1;
+  for (const k of filtered) jenisCount[k.jenis]=(jenisCount[k.jenis]||0)+1;
 
   document.getElementById('print-area').innerHTML = `
     <div class="print-preview" id="lap-content">
