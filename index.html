@@ -1715,10 +1715,10 @@ function generateLPHtml(k, kapolsub) {
   return `
     <div class="lp-header">
       <div class="lp-kop-text">
-        <p>POLRI RESORT METRO JAKARTA TIMUR</p>
+        <p>POLRI DAERAH METROPOLITAN JAKARTA RAYA</p>
+        <p>RESOR METROPOLITAN JAKARTA TIMUR</p>
         <p>SEKTOR KRAMAT JATI</p>
-        <p class="bold">POLSUBSEKTOR PASAR INDUK</p>
-        <p>Jln.Raya Bogor Km 22 Jakarta Timur 13540</p>
+        <p>Jl. Merpati No.1 Kel.Tengah Jakarta Timur 13540</p>
         <p><strong>PRO JUSTITIA</strong></p>
       </div>
       <div style="text-align:center">
@@ -1821,14 +1821,14 @@ function generateLPHtml(k, kapolsub) {
     <!-- TTD -->
     <div class="lp-ttd-row">
       <div class="lp-ttd-col">
-        <p>Jakarta, ${tglLaporan}</p>
-        <p>${(window.ttdLPData?.kiriJabatan || 'YANG MELAPORKAN').toUpperCase()}</p>
+        <p>Mengetahui</p>
+        <p>${(window.ttdLPData?.kiriJabatan || 'KEPALA KEPOLISIAN SEKTOR KRAMAT JATI').toUpperCase()}</p>
         <div class="lp-ttd-space"></div>
-        <p><strong style="text-decoration:underline">${(window.ttdLPData?.kiriNama || k.pelaporNama || '').toUpperCase()}</strong></p>
+        <p><strong style="text-decoration:underline">${(window.ttdLPData?.kiriNama || '').toUpperCase()}</strong></p>
         <p style="font-size:9pt">${window.ttdLPData?.kiriPangkat || ''}</p>
       </div>
       <div class="lp-ttd-col">
-        <p>Jakarta, ${tglLaporan}</p>
+        <p>Jakarta, ${k.dilaporkanTgl ? k.dilaporkanTgl.split(' ').slice(1).join(' ') : tglLaporan}</p>
         <p>${(window.ttdLPData?.kananJabatan || 'YANG MENERIMA LAPORAN').toUpperCase()}</p>
         <p><strong>${(k.penyelidik ? k.penyelidik.toUpperCase() : 'KA SPKT')}</strong></p>
         <div class="lp-ttd-space"></div>
