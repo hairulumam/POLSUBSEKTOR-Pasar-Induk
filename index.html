@@ -1348,6 +1348,28 @@ let piketData = [];      // diisi manual lewat form Piket
 let nextKasusId = 1;
 let nextPersonelId = 1;
 let lpCounter = 1; // nomor LP mulai dari 1
+
+// ===== CONFIG =====
+const ADMIN_PIN = '124578';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3n3vlV3lz9Q0B0KK3-7N8P99Qf35y8TdCk8CwbH-p43XpMxqpvBC8/exec';
+let gsConnected = false;
+
+// ===== DRAFT & REMEMBER FORM =====
+const DRAFT_SIMPEL = 'draft_simpel';
+const DRAFT_LENGKAP = 'draft_lengkap';
+const REMEMBER_FIELDS = 'remember_fields';
+const REMEMBER_IDS_SIMPEL = ['fs-penyelidik','fs-status'];
+const REMEMBER_IDS_LENGKAP = ['f-penyelidik','f-status','f-tindakan','f-pasal',
+  'ttd-lp-kiri-jabatan','ttd-lp-kiri-nama','ttd-lp-kiri-pangkat',
+  'ttd-lp-kanan-jabatan','ttd-lp-kanan-nama','ttd-lp-kanan-pangkat'];
+const DRAFT_IDS_SIMPEL = ['fs-waktu','fs-jenis','fs-tkp','fs-tsk','fs-bb','fs-kerugian','fs-pelapor','fs-penyelidik','fs-status'];
+const DRAFT_IDS_LENGKAP = [
+  'f-nomor-lp','f-tindakan','f-pelapor-nama','f-pelapor-ttl','f-pelapor-alamat',
+  'f-pelapor-pekerjaan','f-pelapor-hp','f-pelapor-nik','f-dilaporkan-tgl','f-waktu-kejadian',
+  'f-jenis','f-tkp','f-tsk','f-saksi','f-pasal','f-modus','f-bb','f-kerugian','f-status','f-penyelidik',
+  'ttd-lp-kiri-jabatan','ttd-lp-kiri-nama','ttd-lp-kiri-pangkat',
+  'ttd-lp-kanan-jabatan','ttd-lp-kanan-nama','ttd-lp-kanan-pangkat'
+];
 let piketYear = 2026, piketMonth = 2;
 
 // ===== HELPERS =====
@@ -2164,9 +2186,6 @@ const now = new Date();
 const mo = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES'];
 document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${now.getFullYear()}`;
 
-// ===== GOOGLE SHEETS CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3n3vlV3lz9Q0B0KK3-7N8P99Qf35y8TdCk8CwbH-p43XpMxqpvBC8/exec';
-let gsConnected = false;
 
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
@@ -2179,7 +2198,6 @@ initApp();
 attachDraftListeners();
 
 // ===== LOGIN SYSTEM =====
-const ADMIN_PIN = '124578';
 let selectedMode = null;
 
 function selectMode(mode) {} // kept for compatibility
@@ -2391,27 +2409,6 @@ function showGsStatus(state) {
 }
 
 
-// ===== DRAFT & REMEMBER FORM =====
-const DRAFT_SIMPEL = 'draft_simpel';
-const DRAFT_LENGKAP = 'draft_lengkap';
-const REMEMBER_FIELDS = 'remember_fields';
-
-// Field yang diingat setelah simpan (sering sama antar kasus)
-const REMEMBER_IDS_SIMPEL = ['fs-penyelidik','fs-status'];
-const REMEMBER_IDS_LENGKAP = ['f-penyelidik','f-status','f-tindakan','f-pasal',
-  'ttd-lp-kiri-jabatan','ttd-lp-kiri-nama','ttd-lp-kiri-pangkat',
-  'ttd-lp-kanan-jabatan','ttd-lp-kanan-nama','ttd-lp-kanan-pangkat'];
-
-// Semua field form simpel
-const DRAFT_IDS_SIMPEL = ['fs-waktu','fs-jenis','fs-tkp','fs-tsk','fs-bb','fs-kerugian','fs-pelapor','fs-penyelidik','fs-status'];
-// Semua field form lengkap
-const DRAFT_IDS_LENGKAP = [
-  'f-nomor-lp','f-tindakan','f-pelapor-nama','f-pelapor-ttl','f-pelapor-alamat',
-  'f-pelapor-pekerjaan','f-pelapor-hp','f-pelapor-nik','f-dilaporkan-tgl','f-waktu-kejadian',
-  'f-jenis','f-tkp','f-tsk','f-saksi','f-pasal','f-modus','f-bb','f-kerugian','f-status','f-penyelidik',
-  'ttd-lp-kiri-jabatan','ttd-lp-kiri-nama','ttd-lp-kiri-pangkat',
-  'ttd-lp-kanan-jabatan','ttd-lp-kanan-nama','ttd-lp-kanan-pangkat'
-];
 
 function saveDraft(type) {
   try {
