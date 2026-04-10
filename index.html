@@ -1562,7 +1562,10 @@ function renderKriminalitas() {
         ? `<button class="btn-green" onclick="showLP(${k.id})">📄 LP</button>`
         : '<span style="color:var(--text3);font-size:0.7rem">—</span>'}
       </td>
-      <td><button class="btn btn-red" onclick="deleteKasus(${k.id})">✕</button></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-outline btn-sm" onclick="editKasus(${k.id})" style="font-size:0.7rem;padding:4px 8px">✏️</button>
+        <button class="btn btn-red" onclick="deleteKasus(${k.id})">✕</button>
+      </td>
     </tr>`).join('');
 }
 
@@ -1627,6 +1630,113 @@ function deleteKasus(id) {
   showToast('🗑️ Kasus dihapus');
   renderAll();
   deleteKasusFromSheet(id);
+}
+
+function editKasus(id) {
+  const k = kasusData.find(c => c.id === id);
+  if (!k) return;
+
+  // Buat popup edit
+  const isLP = k.ket === 'Dibuatkan LP';
+  document.getElementById('popup-title').textContent = `✏️ Edit Kasus #${id}`;
+  document.getElementById('popup-body').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Waktu Kejadian</label>
+          <input type="text" class="form-input" id="edit-waktu" value="${k.waktuKejadian||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jenis Kasus</label>
+          <select class="form-select" id="edit-jenis">
+            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Narkoba','Pelanggaran Lalu Lintas','Kebakaran','Lain-lain']
+              .map(j=>`<option ${k.jenis===j?'selected':''}>${j}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">TKP</label>
+          <input type="text" class="form-input" id="edit-tkp" value="${k.tkp||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">TSK / Pelaku</label>
+          <input type="text" class="form-input" id="edit-tsk" value="${k.tsk||''}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nama Pelapor</label>
+          <input type="text" class="form-input" id="edit-pelapor" value="${k.pelaporNama||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Barang Bukti</label>
+          <input type="text" class="form-input" id="edit-bb" value="${k.bb||''}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Kerugian</label>
+          <input type="text" class="form-input" id="edit-kerugian" value="${k.kerugian||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="edit-status">
+            <option ${k.status==='Proses'?'selected':''} value="Proses">Dalam Proses</option>
+            <option ${k.status==='Selesai'?'selected':''} value="Selesai">Selesai / SP3</option>
+            <option ${k.status==='Limpah'?'selected':''} value="Limpah">Dilimpahkan</option>
+          </select>
+        </div>
+      </div>
+      ${isLP ? `
+      <div class="form-group">
+        <label class="form-label">Nomor LP</label>
+        <input type="text" class="form-input" id="edit-nomorlp" value="${k.nomorLp||''}" style="font-family:'DM Mono',monospace;font-size:0.78rem">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Uraian Kejadian</label>
+        <textarea class="form-textarea" id="edit-modus">${k.modus||''}</textarea>
+      </div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-primary" style="flex:1" onclick="saveEditKasus(${id})">💾 Simpan Perubahan</button>
+        <button class="btn btn-outline" onclick="closePopup()">Batal</button>
+      </div>
+    </div>`;
+  document.getElementById('popup-overlay').classList.add('show');
+}
+
+async function saveEditKasus(id) {
+  const idx = kasusData.findIndex(k => k.id === id);
+  if (idx === -1) return;
+
+  const k = kasusData[idx];
+  k.waktuKejadian = document.getElementById('edit-waktu')?.value.trim() || k.waktuKejadian;
+  k.jenis         = document.getElementById('edit-jenis')?.value || k.jenis;
+  k.tkp           = document.getElementById('edit-tkp')?.value.trim() || k.tkp;
+  k.tsk           = document.getElementById('edit-tsk')?.value.trim() || k.tsk;
+  k.pelaporNama   = document.getElementById('edit-pelapor')?.value.trim() || k.pelaporNama;
+  k.bb            = document.getElementById('edit-bb')?.value.trim() || k.bb;
+  k.kerugian      = document.getElementById('edit-kerugian')?.value.trim() || k.kerugian;
+  k.status        = document.getElementById('edit-status')?.value || k.status;
+  if (k.ket === 'Dibuatkan LP') {
+    k.nomorLp = document.getElementById('edit-nomorlp')?.value.trim() || k.nomorLp;
+    k.modus   = document.getElementById('edit-modus')?.value.trim() || k.modus;
+  }
+
+  kasusData[idx] = k;
+  closePopup();
+  showToast('⏳ Menyimpan perubahan...');
+  renderAll();
+
+  if (gsConnected) {
+    try {
+      const res = await postToSheet({ action: 'update', kasus: k });
+      if (res && res.ok) showToast('✅ Perubahan tersimpan di Sheet');
+      else showToast('⚠️ Tersimpan lokal saja');
+    } catch(e) { showToast('⚠️ Tersimpan lokal saja'); }
+  } else {
+    showToast('✅ Perubahan tersimpan');
+  }
 }
 
 // ===== SHOW LP =====
