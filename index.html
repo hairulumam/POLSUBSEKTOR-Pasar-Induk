@@ -1341,80 +1341,13 @@ body.view-mode .btn-green {
 
 <script>
 // ===== STATE =====
-let kasusData = [
-  {
-    id:1,
-    pelaporNama:'Pak Hendra', pelaporTtl:'Jakarta, 1 Januari 1980', pelaporJk:'Laki-laki',
-    pelaporAgama:'Islam', pelaporPekerjaan:'Pedagang', pelaporAlamat:'Jl. Pasar Induk No. 1', pelaporNik:'', pelaporHp:'',
-    dilaporkanTgl:'Minggu, 2 Maret 2026 jam 07.00 Wib',
-    waktuKejadian:'Minggu, 2 Maret 2026 sekitar jam 05.00 Wib',
-    jenis:'Pencurian', tkp:'Blok B Pasar Induk', tsk:'-', saksi:'-', pasal:'Pasal 362 KUHP',
-    modus:'Kehilangan dagangan sayuran saat subuh, pelaku tidak diketahui.', bb:'Nihil', kerugian:'Rp. 500.000',
-    status:'Selesai', ket:'Tidak Dibuatkan LP', penyelidik:'Brigadir Suparto', tindakan:'',
-    nomorLp:''
-  },
-  {
-    id:2,
-    pelaporNama:'Pak Rudi', pelaporTtl:'Bogor, 15 Juni 1975', pelaporJk:'Laki-laki',
-    pelaporAgama:'Islam', pelaporPekerjaan:'Pedagang', pelaporAlamat:'Jl. Raya Bogor No. 22', pelaporNik:'', pelaporHp:'',
-    dilaporkanTgl:'Rabu, 5 Maret 2026 jam 10.00 Wib',
-    waktuKejadian:'Rabu, 5 Maret 2026 sekitar jam 09.00 Wib',
-    jenis:'Premanisme / Pungli', tkp:'Pintu Masuk Timur', tsk:'Tidak Diketahui', saksi:'-', pasal:'Pasal 368 KUHP',
-    modus:'Pemerasan terhadap pedagang kecil secara berulang oleh sekelompok orang tidak dikenal.', bb:'Nihil', kerugian:'Rp. 200.000',
-    status:'Proses', ket:'Dibuatkan LP', penyelidik:'Bripka Andika S.', tindakan:'Membuat Surat Tanda Bukti Penerimaan Laporan/Pengaduan, menyerahkan Laporan Polisi, pelapor, pelaku dan barang bukti ke piket Reskrim',
-    nomorLp:'LP/B/2/III/2026/SPKT/POLSUBSEKTOR PASAR INDUK/SEK.KRAMAT JATI/RES.METRO JT/PMJ'
-  },
-  {
-    id:3,
-    pelaporNama:'Bu Siti', pelaporTtl:'Jakarta, 20 Maret 1985', pelaporJk:'Perempuan',
-    pelaporAgama:'Islam', pelaporPekerjaan:'Pedagang', pelaporAlamat:'Jl. Kramat Jati No. 5', pelaporNik:'', pelaporHp:'',
-    dilaporkanTgl:'Jumat, 7 Maret 2026 jam 13.00 Wib',
-    waktuKejadian:'Jumat, 7 Maret 2026 sekitar jam 11.00 Wib',
-    jenis:'Penipuan / Penggelapan', tkp:'Area Parkir', tsk:'Tidak Diketahui', saksi:'-', pasal:'Pasal 378 KUHP',
-    modus:'Penipuan transaksi jual beli, korban dijanjikan barang murah namun tidak diterima.', bb:'Nihil', kerugian:'Rp. 3.000.000',
-    status:'Proses', ket:'Dibuatkan LP', penyelidik:'Brigadir Suparto', tindakan:'Membuat Surat Tanda Bukti Penerimaan Laporan/Pengaduan, menyerahkan Laporan Polisi, pelapor, pelaku dan barang bukti ke piket Reskrim',
-    nomorLp:'LP/B/3/III/2026/SPKT/POLSUBSEKTOR PASAR INDUK/SEK.KRAMAT JATI/RES.METRO JT/PMJ'
-  },
-  {
-    id:4,
-    pelaporNama:'NAZWA DELILA AZZAHRA', pelaporTtl:'Jakarta, 26 Januari 2007', pelaporJk:'Perempuan',
-    pelaporAgama:'Islam', pelaporPekerjaan:'Swasta', pelaporAlamat:'Jl. Rasamala XI No.56 RT 08/06 Kel. Utan Kayu Selatan Kec. Matraman Jakarta Timur', pelaporNik:'3175016601071001', pelaporHp:'088293083433',
-    dilaporkanTgl:'Selasa, 31 Maret 2026 jam 02.30 Wib',
-    waktuKejadian:'Selasa, 31 Maret 2026 sekitar jam 01.45 Wib',
-    jenis:'Pencurian', tkp:'Los buah pisang pasar Induk Kel. Tengah Kec. Kramat Jati Jakarta Timur', tsk:'Sdr. RAUL', saksi:'Sdr. GERALDY RIZKY SEPTRIANTO', pasal:'Tindak pidana pencurian (pasal 477 KUHP)',
-    modus:'Pada hari Selasa tanggal 31 Maret 2026 pelapor bersama pacamya yang bernama sdr. GERALDY RIZKY SEPTRIANTO datang ke pasar Induk Kramat Jati Jakarta Timur dengan maksud mengambil pesanan barang berupa pisang untuk dikirim ke Pondok Aren, Tengerang, Prov Banten. Setelah sampai ditempat yang dimaksud sdr. GERALDY RIZKY SEPTRIANTO turun dari mobil sedangkan pelapor tidur di bangku samping kemudi mobil sembari memegang handphonenya dimana kaca pintu depan kiri mobil sedikit terbuka. Baru beberapa saat tertidur, pelapor merasakan handphone yang dipegangnya diambil pelan-pelan oleh seseorang yang pada akhirnya terjaga dan dilihatnya ada seorang laki-laki yang tidak dikenalnya telah mengambil handphonenya. Dalam keadaan melarikan diri, pelapor berteriak "tolonggg..jambretttt !" yang seketika itu juga datang pacamya yang langsung mengajak dan ikut berteriak jambret beberapa kali yang diikuti beberapa warga mengejar hingga akhirnya pelaku berhasil ditangkap bersama barang bukti yang diambilnya untuk selanjutnya dibawa ke Polsek Kramat Jati Jakarta Timur.',
-    bb:'1 (satu) buah Handphone merk IPHONE 7 PLUS warna hitam', kerugian:'Nihil',
-    status:'Selesai', ket:'Dibuatkan LP', penyelidik:'AIPTU YAOMAL RAMADHANI', tindakan:'Membuat Surat Tanda Bukti Penerimaan Laporan/Pengaduan, menyerahkan Laporan Polisi, pelapor, pelaku dan barang bukti ke piket Reskrim',
-    nomorLp:'LP/B/47/III/2026/SPKT/POLSUBSEKTOR PASAR INDUK/SEK.KRAMAT JATI/RES.METRO JT/PMJ'
-  },
-];
+let kasusData = [];      // diisi dari Google Sheet saat load
+let personelData = [];   // diisi manual lewat form Personel
+let piketData = [];      // diisi manual lewat form Piket
 
-let personelData = [
-  { id:1, nama:'IPDA H. Abdul Basit, SH', pangkat:'Kapolsubsektor (IPDA)', nrp:'77110257', status:'Aktif', unit:'Pimpinan' },
-  { id:2, nama:'BRIPKA Darmawan', pangkat:'Wakapolsubsektor (BRIPKA)', nrp:'', status:'Aktif', unit:'Pimpinan' },
-  { id:3, nama:'AIPTU Yaomal Ramadhani', pangkat:'Aiptu', nrp:'', status:'Aktif', unit:'Anggota SPKT / Piket' },
-  { id:4, nama:'Bripka Andika S.', pangkat:'Bripka', nrp:'', status:'Aktif', unit:'Anggota Reskrim' },
-  { id:5, nama:'Brigadir Suparto', pangkat:'Brigadir', nrp:'', status:'Aktif', unit:'Anggota Reskrim' },
-  { id:6, nama:'Briptu Faisal', pangkat:'Briptu', nrp:'', status:'Aktif', unit:'Anggota Sabhara' },
-  { id:7, nama:'Bripda Cahyo', pangkat:'Bripda', nrp:'', status:'Cuti', unit:'Anggota Sabhara' },
-  { id:8, nama:'Bripka Sari Dewi', pangkat:'Bripka', nrp:'', status:'Aktif', unit:'Anggota SPKT / Piket' },
-  { id:9, nama:'Brigadir Widodo', pangkat:'Brigadir', nrp:'', status:'Diklat', unit:'Anggota Binmas' },
-  { id:10, nama:'Briptu Hendra', pangkat:'Briptu', nrp:'', status:'Aktif', unit:'Anggota Sabhara' },
-];
-
-let piketData = [
-  { tanggal:'2026-03-20', shift:'pagi', petugas:'Bripka Sari Dewi' },
-  { tanggal:'2026-03-20', shift:'sore', petugas:'Briptu Faisal' },
-  { tanggal:'2026-03-20', shift:'malam', petugas:'Brigadir Suparto' },
-  { tanggal:'2026-03-21', shift:'pagi', petugas:'Bripka Andika S.' },
-  { tanggal:'2026-03-21', shift:'malam', petugas:'Bripda Cahyo' },
-  { tanggal:'2026-03-22', shift:'pagi', petugas:'Briptu Faisal' },
-  { tanggal:'2026-03-22', shift:'sore', petugas:'Bripka Sari Dewi' },
-];
-
-let nextKasusId = 5;
-let nextPersonelId = 11;
-let lpCounter = 48; // mulai dari 48 (setelah LP/B/47)
+let nextKasusId = 1;
+let nextPersonelId = 1;
+let lpCounter = 1; // nomor LP mulai dari 1
 let piketYear = 2026, piketMonth = 2;
 
 // ===== HELPERS =====
