@@ -1320,6 +1320,9 @@ body.view-mode .btn-green {
           <button class="btn btn-gold admin-only" onclick="generateLaporan()" style="flex:1">📄 Preview Laporan Bulanan</button>
           <button class="btn btn-primary admin-only" onclick="window.print()" style="flex:1">🖨️ Cetak / Simpan PDF</button>
         </div>
+        <div style="margin-top:10px">
+          <button class="btn btn-outline admin-only" onclick="generateLampiranKasus()" style="width:100%">📋 Preview Lampiran Daftar Kasus</button>
+        </div>
       </div>
     </div>
 
@@ -2179,6 +2182,133 @@ function generateLaporan() {
     </div>
   `;
   showToast('✅ Laporan berhasil digenerate!');
+}
+function generateLampiranKasus() {
+  const bulanNames=['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const bulan = parseInt(document.getElementById('f-lap-bulan').value);
+  const tahun = parseInt(document.getElementById('f-lap-tahun').value);
+  const bulanNama = bulanNames[bulan];
+  const kapolsub = getKapolsubsektor();
+
+  function matchBulanTahun(waktu) {
+    if (!waktu) return false;
+    const bulanId = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+    const w = waktu.toLowerCase();
+    const bIdx = bulanId.findIndex(b => w.includes(b));
+    if (bIdx < 0) return false;
+    return (bIdx + 1) === bulan && w.includes(String(tahun));
+  }
+
+  const filtered = kasusData.filter(k => matchBulanTahun(k.waktuKejadian || k.waktu));
+  
+  if (filtered.length === 0) {
+    showToast('⚠️ Tidak ada kasus pada ' + bulanNama + ' ' + tahun);
+    return;
+  }
+
+  const tglCetak = new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+
+  // Buka jendela baru landscape
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <title>Lampiran Daftar Kasus ${bulanNama} ${tahun}</title>
+  <style>
+    @page { size: A4 landscape; margin: 15mm 12mm; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; }
+    .kop { text-align:center; margin-bottom: 10px; border-bottom: 3px double #000; padding-bottom: 8px; }
+    .kop h3 { font-size: 11pt; font-weight: bold; text-transform: uppercase; }
+    .kop p { font-size: 9pt; }
+    .judul { text-align:center; margin: 8px 0 12px; }
+    .judul h2 { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-decoration: underline; }
+    .judul p { font-size: 9.5pt; }
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    th { background: #1a1a2e; color: white; padding: 5px 4px; text-align: center; font-size: 7.5pt; border: 1px solid #333; }
+    td { padding: 4px; border: 1px solid #999; vertical-align: top; }
+    tr:nth-child(even) td { background: #f9f9f9; }
+    .ttd-row { display: flex; justify-content: space-between; margin-top: 20px; }
+    .ttd-box { text-align: center; width: 220px; }
+    .ttd-space { height: 50px; }
+    .summary { margin: 10px 0; font-size: 9pt; }
+    .summary span { font-weight: bold; }
+  </style>
+  </head><body>
+  <div class="kop">
+    <h3>POLRI DAERAH METROPOLITAN JAKARTA RAYA</h3>
+    <p>RESOR METROPOLITAN JAKARTA TIMUR / SEKTOR KRAMAT JATI</p>
+    <p><strong>POLSUBSEKTOR PASAR INDUK</strong></p>
+    <p>Jl. Merpati No.1 Kel.Tengah Jakarta Timur 13540</p>
+  </div>
+
+  <div class="judul">
+    <h2>Lampiran Daftar Kasus Kriminalitas</h2>
+    <p>Periode: ${bulanNama} ${tahun}</p>
+  </div>
+
+  <div class="summary">
+    Total Kasus: <span>${filtered.length}</span> &nbsp;|&nbsp;
+    Selesai: <span>${filtered.filter(k=>k.status==='Selesai').length}</span> &nbsp;|&nbsp;
+    Proses: <span>${filtered.filter(k=>k.status==='Proses').length}</span> &nbsp;|&nbsp;
+    Limpah: <span>${filtered.filter(k=>k.status==='Limpah').length}</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:3%">No</th>
+        <th style="width:5%">No. LP</th>
+        <th style="width:10%">Waktu Kejadian</th>
+        <th style="width:10%">Jenis Kasus</th>
+        <th style="width:10%">TKP</th>
+        <th style="width:10%">Pelaku / TSK</th>
+        <th style="width:12%">Nama Pelapor</th>
+        <th style="width:10%">Barang Bukti</th>
+        <th style="width:8%">Kerugian</th>
+        <th style="width:12%">Uraian Singkat</th>
+        <th style="width:6%">Penyelidik</th>
+        <th style="width:4%">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filtered.map((k,i) => `<tr>
+        <td style="text-align:center">${i+1}</td>
+        <td style="font-size:6.5pt">${k.nomorLp||'-'}</td>
+        <td>${k.waktuKejadian||'-'}</td>
+        <td><strong>${k.jenis||'-'}</strong></td>
+        <td>${k.tkp||'-'}</td>
+        <td>${k.tsk||'Tidak diketahui'}</td>
+        <td>${k.pelaporNama||'-'}</td>
+        <td>${k.bb||'Nihil'}</td>
+        <td>${k.kerugian||'Nihil'}</td>
+        <td style="font-size:7pt">${k.modus ? k.modus.substring(0,120)+(k.modus.length>120?'...':'') : '-'}</td>
+        <td>${k.penyelidik||'-'}</td>
+        <td style="text-align:center"><strong>${k.status||'-'}</strong></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+
+  <div class="ttd-row">
+    <div class="ttd-box">
+      <p>Mengetahui,</p>
+      <p><strong>KEPALA KEPOLISIAN SEKTOR KRAMAT JATI</strong></p>
+      <div class="ttd-space"></div>
+      <p><strong><u>${(window.ttdLPData?.kiriNama || '').toUpperCase()}</u></strong></p>
+      <p>${window.ttdLPData?.kiriPangkat || ''}</p>
+    </div>
+    <div class="ttd-box">
+      <p>Jakarta, ${tglCetak}</p>
+      <p><strong>KAPOLSUBSEKTOR PASAR INDUK</strong></p>
+      <div class="ttd-space"></div>
+      <p><strong><u>${kapolsub.nama.toUpperCase()}</u></strong></p>
+      <p>${kapolsub.pangkat ? kapolsub.pangkat.split('(')[1]?.replace(')','') || 'IPDA' : 'IPDA'} NRP. ${kapolsub.nrp || '—'}</p>
+    </div>
+  </div>
+
+  </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+  showToast('✅ Lampiran daftar kasus siap dicetak!');
 }
 
 // ===== TTD MANUAL DATA (localStorage) — hanya untuk LP =====
