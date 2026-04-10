@@ -2144,6 +2144,10 @@ const now = new Date();
 const mo = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES'];
 document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${now.getFullYear()}`;
 
+// ===== GOOGLE SHEETS CONFIG =====
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3n3vlV3lz9Q0B0KK3-7N8P99Qf35y8TdCk8CwbH-p43XpMxqpvBC8/exec';
+let gsConnected = false;
+
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
   await loadKasusFromSheet();
@@ -2152,11 +2156,6 @@ async function initApp() {
   loadTtdFromStorage();
 }
 initApp();
-
-// ===== GOOGLE SHEETS CONFIG =====
-// ⚠️  Ganti URL ini dengan URL deployment Apps Script Anda
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3n3vlV3lz9Q0B0KK3-7N8P99Qf35y8TdCk8CwbH-p43XpMxqpvBC8/exec';
-let gsConnected = false; // akan jadi true setelah load berhasil
 
 // ===== LOGIN SYSTEM =====
 const ADMIN_PIN = '124578';
