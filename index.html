@@ -1355,21 +1355,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3
 let gsConnected = false;
 
 // ===== DRAFT & REMEMBER FORM =====
-const DRAFT_SIMPEL = 'draft_simpel';
-const DRAFT_LENGKAP = 'draft_lengkap';
-const REMEMBER_FIELDS = 'remember_fields';
-const REMEMBER_IDS_SIMPEL = ['fs-penyelidik','fs-status'];
-const REMEMBER_IDS_LENGKAP = ['f-penyelidik','f-status','f-tindakan','f-pasal',
-  'ttd-lp-kiri-jabatan','ttd-lp-kiri-nama','ttd-lp-kiri-pangkat',
-  'ttd-lp-kanan-jabatan','ttd-lp-kanan-nama','ttd-lp-kanan-pangkat'];
-const DRAFT_IDS_SIMPEL = ['fs-waktu','fs-jenis','fs-tkp','fs-tsk','fs-bb','fs-kerugian','fs-pelapor','fs-penyelidik','fs-status'];
-const DRAFT_IDS_LENGKAP = [
-  'f-nomor-lp','f-tindakan','f-pelapor-nama','f-pelapor-ttl','f-pelapor-alamat',
-  'f-pelapor-pekerjaan','f-pelapor-hp','f-pelapor-nik','f-dilaporkan-tgl','f-waktu-kejadian',
-  'f-jenis','f-tkp','f-tsk','f-saksi','f-pasal','f-modus','f-bb','f-kerugian','f-status','f-penyelidik',
-  'ttd-lp-kiri-jabatan','ttd-lp-kiri-nama','ttd-lp-kiri-pangkat',
-  'ttd-lp-kanan-jabatan','ttd-lp-kanan-nama','ttd-lp-kanan-pangkat'
-];
+// (dinonaktifkan)
 let piketYear = 2026, piketMonth = 2;
 
 // ===== HELPERS =====
@@ -1427,16 +1413,12 @@ function setKetLP(val) {
     btnYa.setAttribute('style', btnYa.getAttribute('style').replace('border:2px solid var(--navy);background:var(--navy);color:white', 'border:2px solid var(--border);background:var(--surface2);color:var(--text2)'));
     simpel.style.display = 'block';
     lengkap.style.display = 'none';
-    loadDraft('simpel');
-    loadRemember();
   } else {
     btnYa.setAttribute('style', btnYa.getAttribute('style') + ';border:2px solid var(--navy);background:var(--navy);color:white');
     btnTidak.setAttribute('style', btnTidak.getAttribute('style').replace('border:2px solid var(--navy);background:var(--navy);color:white', 'border:2px solid var(--border);background:var(--surface2);color:var(--text2)'));
     simpel.style.display = 'none';
     lengkap.style.display = 'block';
     loadTtdFromStorage();
-    loadDraft('lengkap');
-    loadRemember();
     document.getElementById('f-nomor-lp').focus();
   }
 }
@@ -1471,9 +1453,6 @@ function addKasusSimpel() {
     document.getElementById(id).value = '';
   });
   document.getElementById('fs-jenis').value = '';
-
-  saveRemember('simpel');
-  clearDraft('simpel');
   showToast('⏳ Menyimpan ke Google Sheet...');
   renderAll();
   saveKasusToSheet(newKasus).then(savedId => {
@@ -1629,17 +1608,6 @@ function addKasus() {
   };
   kasusData.push(newKasus);
 
-  // Reset form
-  ['f-pelapor-nama','f-pelapor-ttl','f-pelapor-pekerjaan','f-pelapor-alamat','f-pelapor-nik','f-pelapor-hp',
-   'f-dilaporkan-tgl','f-waktu-kejadian','f-tkp','f-tsk','f-saksi','f-pasal','f-modus','f-bb','f-kerugian'].forEach(id=>{
-    document.getElementById(id).value='';
-  });
-  document.getElementById('f-jenis').value='';
-  document.getElementById('f-ket').value='Tidak Dibuatkan LP';
-  document.getElementById('lp-extra-box').classList.remove('show');
-
-  saveRemember('lengkap');
-  clearDraft('lengkap');
   showToast('⏳ Menyimpan ke Google Sheet...');
   renderAll();
   saveKasusToSheet(newKasus).then(savedId => {
@@ -2197,7 +2165,6 @@ async function initApp() {
   loadTtdFromStorage();
 }
 initApp();
-attachDraftListeners();
 
 // ===== LOGIN SYSTEM =====
 let selectedMode = null;
