@@ -692,6 +692,17 @@ body.view-mode .btn-green {
   display: none !important;
 }
 
+/* NAMA LINK clickable di tabel */
+.nama-link {
+  cursor: pointer;
+  color: var(--blue2);
+  font-weight: 700;
+  border-bottom: 1px dashed var(--blue2);
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.nama-link:hover { color: var(--navy); border-color: var(--navy); }
+
 /* MODE INDICATOR badge on header */
 #mode-badge {
   position: fixed;
@@ -1142,6 +1153,40 @@ body.view-mode .btn-green {
         <span>📋</span><h3>Daftar Semua Kasus</h3>
         <span class="badge badge-biru" id="badge-kasus-list">0</span>
       </div>
+
+      <!-- SEARCH & FILTER -->
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:#fafbfc;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="position:relative;flex:1;min-width:180px;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.85rem;opacity:0.4;pointer-events:none;">🔍</span>
+          <input type="text" id="search-kasus" class="form-input"
+            placeholder="Cari nama, NIK, TSK, TKP, No. LP..."
+            oninput="filterKasus()"
+            style="padding-left:32px;background:white;font-size:0.82rem;height:38px;">
+        </div>
+        <select id="filter-status" class="form-select" onchange="filterKasus()"
+          style="width:auto;min-width:130px;font-size:0.78rem;background:white;height:38px;">
+          <option value="">Semua Status</option>
+          <option value="Proses">⏳ Proses</option>
+          <option value="Selesai">✓ Selesai</option>
+          <option value="Limpah">↗ Limpah</option>
+        </select>
+        <select id="filter-jenis" class="form-select" onchange="filterKasus()"
+          style="width:auto;min-width:140px;font-size:0.78rem;background:white;height:38px;">
+          <option value="">Semua Jenis</option>
+          <option>Pencurian</option>
+          <option>Pencurian dengan Kekerasan</option>
+          <option>Penipuan / Penggelapan</option>
+          <option>Premanisme / Pungli</option>
+          <option>Perkelahian / Penganiayaan</option>
+          <option>Narkoba</option>
+          <option>Pelanggaran Lalu Lintas</option>
+          <option>Kebakaran</option>
+          <option>Lain-lain</option>
+        </select>
+        <button onclick="resetFilter()" class="btn btn-outline btn-sm" style="height:38px;white-space:nowrap;font-size:0.72rem;">✕ Reset</button>
+        <span id="search-info" style="font-size:0.7rem;color:var(--text3);white-space:nowrap;"></span>
+      </div>
+
       <div class="card-body" style="padding:0; overflow-x:auto;">
         <table class="data-table">
           <thead>
@@ -1544,32 +1589,109 @@ function statusBadge(s) {
 // ===== KRIMINALITAS =====
 function renderKriminalitas() {
   document.getElementById('badge-kasus-list').textContent = kasusData.length;
+  // Pertahankan filter aktif jika ada
+  const sq = document.getElementById('search-kasus');
+  const hasFilter = sq && (sq.value || document.getElementById('filter-status').value || document.getElementById('filter-jenis').value);
+  if (hasFilter) { filterKasus(); } else { renderKasusTable([...kasusData].reverse()); }
+}
+
+// Highlight kata yang dicari
+function hlText(text, q) {
+  if (!q || !text) return text || '-';
+  const esc = q.replace(/[.*+?^${}()|[\]\]/g, '\$&');
+  return String(text).replace(new RegExp('(' + esc + ')', 'gi'),
+    '<mark style="background:#fef08a;border-radius:2px;padding:0 1px">$1</mark>');
+}
+
+// Render tabel dengan data terfilter
+function renderKasusTable(data, q) {
   const tbody = document.getElementById('tabel-kasus-full');
-  if (kasusData.length===0) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">Belum ada kasus</td></tr>`;
+  const total = kasusData.length;
+  const info  = document.getElementById('search-info');
+
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px;font-size:0.82rem">
+      ${total === 0 ? 'Belum ada kasus tercatat' : '🔍 Tidak ada kasus yang cocok dengan pencarian'}
+    </td></tr>`;
+    if (info) info.textContent = total > 0 ? `0 dari ${total} kasus` : '';
     return;
   }
-  tbody.innerHTML = [...kasusData].reverse().map((k,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td style="font-size:0.7rem;min-width:120px">${k.waktuKejadian||'-'}</td>
-      <td style="font-weight:600;font-size:0.78rem;min-width:120px">${k.jenis}</td>
-      <td style="font-size:0.75rem;color:var(--text2);min-width:120px">${k.tkp}</td>
-      <td style="font-size:0.75rem;min-width:100px">${k.tsk||'-'}</td>
-      <td style="font-size:0.75rem;min-width:120px">${k.bb||'Nihil'}</td>
-      <td style="font-size:0.75rem;min-width:100px">${k.pelaporNama||'-'}</td>
-      <td style="font-size:0.75rem;font-weight:600;min-width:90px">${k.kerugian||'Nihil'}</td>
-      <td style="font-size:0.72rem">${k.ket||'-'}</td>
+  if (info) info.textContent = data.length < total ? `${data.length} dari ${total} kasus ditemukan` : `${total} kasus`;
+
+  tbody.innerHTML = data.map((k, i) => {
+    // TSK clickable kecuali "Tidak Diketahui" / kosong
+    const tskVal = k.tsk || '-';
+    const tskHtml = (tskVal && tskVal !== '-' && tskVal.toLowerCase() !== 'tidak diketahui')
+      ? `<span class="nama-link" onclick="cariNama('${tskVal.replace(/'/g,"\'")}')">🔴 ${hlText(tskVal, q)}</span>`
+      : `<span style="color:var(--text3)">${hlText(tskVal, q)}</span>`;
+
+    // Pelapor clickable
+    const pelVal = k.pelaporNama || '';
+    const pelHtml = pelVal
+      ? `<span class="nama-link" onclick="cariNama('${pelVal.replace(/'/g,"\'")}')">👤 ${hlText(pelVal, q)}</span>`
+      : '<span style="color:var(--text3)">-</span>';
+
+    return `<tr>
+      <td>${i + 1}</td>
+      <td style="font-size:0.7rem;min-width:110px">${hlText(k.waktuKejadian, q) || '-'}</td>
+      <td style="font-weight:600;font-size:0.78rem;min-width:110px">${hlText(k.jenis, q)}</td>
+      <td style="font-size:0.75rem;color:var(--text2);min-width:110px">${hlText(k.tkp, q)}</td>
+      <td style="min-width:100px">${tskHtml}</td>
+      <td style="font-size:0.75rem;min-width:110px">${hlText(k.bb, q) || 'Nihil'}</td>
+      <td style="min-width:100px">${pelHtml}</td>
+      <td style="font-size:0.75rem;font-weight:600;min-width:80px">${k.kerugian || 'Nihil'}</td>
+      <td style="font-size:0.72rem">${k.ket || '-'}</td>
       <td>${statusBadge(k.status)}</td>
-      <td>${k.ket==='Dibuatkan LP'
+      <td>${k.ket === 'Dibuatkan LP'
         ? `<button class="btn-green" onclick="showLP(${k.id})">📄 LP</button>`
         : '<span style="color:var(--text3);font-size:0.7rem">—</span>'}
       </td>
       <td style="display:flex;gap:4px">
-        <button class="btn btn-outline btn-sm" onclick="editKasus(${k.id})" style="font-size:0.7rem;padding:4px 8px">✏️</button>
-        <button class="btn btn-red" onclick="deleteKasus(${k.id})">✕</button>
+        <button class="btn btn-outline btn-sm admin-only" onclick="editKasus(${k.id})" style="font-size:0.7rem;padding:4px 8px">✏️</button>
+        <button class="btn btn-red admin-only" onclick="deleteKasus(${k.id})">✕</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+}
+
+// Filter realtime
+function filterKasus() {
+  const q      = (document.getElementById('search-kasus')?.value || '').trim().toLowerCase();
+  const status = document.getElementById('filter-status')?.value || '';
+  const jenis  = document.getElementById('filter-jenis')?.value  || '';
+  let data = [...kasusData].reverse();
+  if (status) data = data.filter(k => k.status === status);
+  if (jenis)  data = data.filter(k => k.jenis  === jenis);
+  if (q) data = data.filter(k =>
+    (k.tsk         || '').toLowerCase().includes(q) ||
+    (k.pelaporNama || '').toLowerCase().includes(q) ||
+    (k.pelaporNik  || '').toLowerCase().includes(q) ||
+    (k.tkp         || '').toLowerCase().includes(q) ||
+    (k.jenis       || '').toLowerCase().includes(q) ||
+    (k.nomorLp     || '').toLowerCase().includes(q) ||
+    (k.modus       || '').toLowerCase().includes(q)
+  );
+  renderKasusTable(data, q);
+}
+
+// Klik nama → auto-isi search bar
+function cariNama(nama) {
+  const input = document.getElementById('search-kasus');
+  input.value = nama;
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-jenis').value  = '';
+  filterKasus();
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  input.focus();
+}
+
+// Reset semua filter
+function resetFilter() {
+  document.getElementById('search-kasus').value   = '';
+  document.getElementById('filter-status').value  = '';
+  document.getElementById('filter-jenis').value   = '';
+  renderKasusTable([...kasusData].reverse());
+  document.getElementById('search-info').textContent = '';
 }
 
 function addKasus() {
