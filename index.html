@@ -1611,7 +1611,9 @@ function addKasus() {
   const penyelidik = document.getElementById('f-penyelidik').value;
   const tindakan = document.getElementById('f-tindakan').value.trim();
 
-  if (!jenis || !tkp || !pelaporNama) { showToast('⚠️ Lengkapi Jenis Kasus, TKP, dan Nama Pelapor'); return; }
+  if (!jenis) { showToast('⚠️ Pilih Jenis Kasus'); return; }
+  if (!tkp) { showToast('⚠️ Isi TKP / Tempat Kejadian'); return; }
+  if (!pelaporNama) { showToast('⚠️ Isi Nama Pelapor / Korban'); return; }
 
   let nomorLp = '';
   if (ket === 'Dibuatkan LP') {
@@ -2431,7 +2433,8 @@ function loadDraft(type) {
     const draft = JSON.parse(raw);
     Object.entries(draft).forEach(([id, val]) => {
       const el = document.getElementById(id);
-      if (el && val) el.value = val;
+      // Hanya isi jika field masih kosong
+      if (el && val && !el.value) el.value = val;
     });
   } catch(e) {}
 }
