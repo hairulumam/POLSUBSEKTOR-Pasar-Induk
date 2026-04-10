@@ -1866,22 +1866,36 @@ function statusPersonelBadge(s) {
   return map[s] || `<span class="badge badge-abu">${s}</span>`;
 }
 
-function addPersonel() {
+async function addPersonel() {
   const nama=document.getElementById('f-pnama').value.trim();
   const pangkat=document.getElementById('f-ppangkat').value;
   const nrp=document.getElementById('f-pnrp').value.trim();
   const status=document.getElementById('f-pstatus').value;
   const unit=document.getElementById('f-punit').value;
   if (!nama) { showToast('⚠️ Isi nama personel'); return; }
-  personelData.push({id:nextPersonelId++, nama, pangkat, nrp, status, unit});
+  const personel = {id:nextPersonelId++, nama, pangkat, nrp, status, unit};
+  personelData.push(personel);
   document.getElementById('f-pnama').value='';
   document.getElementById('f-pnrp').value='';
-  showToast('✅ Personel ditambahkan');
+  // Simpan ke Google Sheet
+  if (gsConnected) {
+    showToast('⏳ Menyimpan ke Sheet...');
+    try {
+      const res = await postToSheet({ action: 'addPersonel', personel });
+      if (res && res.ok) { personel.id = Number(res.id); showToast('✅ Personel tersimpan ke Sheet'); }
+      else showToast('✅ Personel ditambahkan (lokal)');
+    } catch(e) { showToast('✅ Personel ditambahkan (lokal)'); }
+  } else {
+    showToast('✅ Personel ditambahkan');
+  }
   renderAll();
 }
 
-function deletePersonel(id) {
+async function deletePersonel(id) {
   personelData = personelData.filter(p=>p.id!==id);
+  if (gsConnected) {
+    try { await postToSheet({ action: 'deletePersonel', id }); } catch(e) {}
+  }
   showToast('🗑️ Personel dihapus');
   renderAll();
 }
@@ -2141,7 +2155,7 @@ initApp();
 
 // ===== GOOGLE SHEETS CONFIG =====
 // ⚠️  Ganti URL ini dengan URL deployment Apps Script Anda
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvQsaIracMZ3HGJftQ4LfEaSK83YitvhN2ZSEt-Y-zFLUXTgtO_Vr3zEKBvc0jNJI0TQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3n3vlV3lz9Q0B0KK3-7N8P99Qf35y8TdCk8CwbH-p43XpMxqpvBC8/exec';
 let gsConnected = false; // akan jadi true setelah load berhasil
 
 // ===== LOGIN SYSTEM =====
@@ -2294,12 +2308,19 @@ async function loadKasusFromSheet() {
     showGsStatus('loading');
     const json = await jsonpRequest(APPS_SCRIPT_URL);
     if (json.ok) {
+      // Load kasus
       if (json.data && json.data.length > 0) {
         kasusData = json.data.map(row => ({ ...row, id: Number(row.id) }));
         const maxId = Math.max(...kasusData.map(k => k.id), 0);
         nextKasusId = maxId + 1;
         const lpNums = kasusData.filter(k => k.nomorLp).map(k => parseInt(k.nomorLp.split('/')[2]) || 0);
         if (lpNums.length > 0) lpCounter = Math.max(...lpNums) + 1;
+      }
+      // Load personel
+      if (json.personel && json.personel.length > 0) {
+        personelData = json.personel.map(row => ({ ...row, id: Number(row.id) }));
+        const maxPId = Math.max(...personelData.map(p => p.id), 0);
+        nextPersonelId = maxPId + 1;
       }
       gsConnected = true;
       showGsStatus('online');
@@ -2311,7 +2332,6 @@ async function loadKasusFromSheet() {
     showGsStatus('offline');
   }
 }
-
 async function saveKasusToSheet(kasus) {
   if (!gsConnected) return null;
   try {
