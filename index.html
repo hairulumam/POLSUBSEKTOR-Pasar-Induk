@@ -1142,6 +1142,21 @@ body.view-mode .btn-green {
         <span>📋</span><h3>Daftar Semua Kasus</h3>
         <span class="badge badge-biru" id="badge-kasus-list">0</span>
       </div>
+      <!-- SEARCH TSK -->
+      <div style="padding:10px 14px 0; border-bottom:1px solid var(--border)">
+        <div style="position:relative;margin-bottom:10px">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.85rem;pointer-events:none">🔍</span>
+          <input type="text" id="search-tsk" class="form-input"
+            style="padding-left:32px;padding-top:8px;padding-bottom:8px;font-size:0.82rem"
+            placeholder="Cari nama / NIK tersangka..."
+            oninput="filterKasusByTsk()">
+        </div>
+        <div id="search-tsk-info" style="display:none;padding:6px 10px;background:#fef3c7;border-radius:8px;font-size:0.75rem;font-weight:700;color:#b45309;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+          <span>🕵️</span>
+          <span id="search-tsk-label"></span>
+          <button onclick="clearTskSearch()" style="margin-left:auto;background:#fbbf24;border:none;border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;cursor:pointer;color:#78350f">✕ Reset</button>
+        </div>
+      </div>
       <div class="card-body" style="padding:0; overflow-x:auto;">
         <table class="data-table">
           <thead>
@@ -1542,20 +1557,53 @@ function statusBadge(s) {
 }
 
 // ===== KRIMINALITAS =====
+let tskSearchQuery = '';
+
+function filterKasusByTsk() {
+  tskSearchQuery = document.getElementById('search-tsk').value.trim().toLowerCase();
+  renderKriminalitas();
+}
+
+function clearTskSearch() {
+  document.getElementById('search-tsk').value = '';
+  tskSearchQuery = '';
+  renderKriminalitas();
+}
+
 function renderKriminalitas() {
-  document.getElementById('badge-kasus-list').textContent = kasusData.length;
+  // Filter berdasarkan search TSK
+  let filtered = [...kasusData].reverse();
+  const infoBox = document.getElementById('search-tsk-info');
+  const infoLabel = document.getElementById('search-tsk-label');
+
+  if (tskSearchQuery) {
+    filtered = filtered.filter(k => {
+      const tskVal = (k.tsk || '').toLowerCase();
+      const nikVal = (k.pelaporNik || '').toLowerCase();
+      return tskVal.includes(tskSearchQuery) || nikVal.includes(tskSearchQuery);
+    });
+    document.getElementById('badge-kasus-list').textContent = `${filtered.length} dari ${kasusData.length}`;
+    infoBox.style.display = 'flex';
+    infoLabel.textContent = `Menampilkan ${filtered.length} kasus terkait "${document.getElementById('search-tsk').value.trim()}"`;
+  } else {
+    document.getElementById('badge-kasus-list').textContent = kasusData.length;
+    infoBox.style.display = 'none';
+  }
+
   const tbody = document.getElementById('tabel-kasus-full');
-  if (kasusData.length===0) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">Belum ada kasus</td></tr>`;
+  if (filtered.length===0) {
+    tbody.innerHTML = tskSearchQuery
+      ? `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">⚠️ Tidak ada kasus ditemukan untuk tersangka "${document.getElementById('search-tsk').value.trim()}"</td></tr>`
+      : `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">Belum ada kasus</td></tr>`;
     return;
   }
-  tbody.innerHTML = [...kasusData].reverse().map((k,i)=>`
+  tbody.innerHTML = filtered.map((k,i)=>`
     <tr>
       <td>${i+1}</td>
       <td style="font-size:0.7rem;min-width:120px">${k.waktuKejadian||'-'}</td>
       <td style="font-weight:600;font-size:0.78rem;min-width:120px">${k.jenis}</td>
       <td style="font-size:0.75rem;color:var(--text2);min-width:120px">${k.tkp}</td>
-      <td style="font-size:0.75rem;min-width:100px">${k.tsk||'-'}</td>
+      <td style="font-size:0.75rem;min-width:100px">${tskSearchQuery && (k.tsk||'').toLowerCase().includes(tskSearchQuery) ? `<span style="background:#fef3c7;padding:1px 4px;border-radius:4px;font-weight:700">${k.tsk||'-'}</span>` : k.tsk||'-'}</td>
       <td style="font-size:0.75rem;min-width:120px">${k.bb||'Nihil'}</td>
       <td style="font-size:0.75rem;min-width:100px">${k.pelaporNama||'-'}</td>
       <td style="font-size:0.75rem;font-weight:600;min-width:90px">${k.kerugian||'Nihil'}</td>
