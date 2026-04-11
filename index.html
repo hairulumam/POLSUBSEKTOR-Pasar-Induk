@@ -2601,7 +2601,34 @@ async function loadKasusFromSheet() {
     if (json.ok) {
       // Load kasus
       if (json.data && json.data.length > 0) {
-        kasusData = json.data.map(row => ({ ...row, id: Number(row.id) }));
+        kasusData = json.data.map(row => {
+          // Normalisasi nama field dari berbagai kemungkinan nama kolom di Google Sheet
+          function pick(obj, ...keys) {
+            for (const k of keys) {
+              if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+            }
+            return '';
+          }
+          return {
+            ...row,
+            id: Number(row.id),
+            waktuKejadian: pick(row, 'waktuKejadian', 'waktu', 'waktu_kejadian', 'Waktu Kejadian', 'waktu kejadian', 'WaktuKejadian', 'WAKTU KEJADIAN'),
+            jenis:         pick(row, 'jenis', 'Jenis', 'jenis_kasus', 'Jenis Kasus', 'JENIS', 'JENIS KASUS'),
+            tkp:           pick(row, 'tkp', 'TKP', 'Tkp', 'tempat_kejadian', 'Tempat Kejadian'),
+            tsk:           pick(row, 'tsk', 'TSK', 'Tsk', 'pelaku', 'Pelaku', 'tersangka', 'Tersangka'),
+            bb:            pick(row, 'bb', 'BB', 'Bb', 'barang_bukti', 'Barang Bukti'),
+            kerugian:      pick(row, 'kerugian', 'Kerugian', 'KERUGIAN'),
+            pelaporNama:   pick(row, 'pelaporNama', 'pelapor_nama', 'Pelapor', 'pelapor', 'Nama Pelapor', 'nama_pelapor', 'PELAPOR'),
+            pelaporNik:    pick(row, 'pelaporNik', 'pelapor_nik', 'NIK', 'nik', 'Nik'),
+            status:        pick(row, 'status', 'Status', 'STATUS'),
+            ket:           pick(row, 'ket', 'Ket', 'KET', 'keterangan', 'Keterangan'),
+            nomorLp:       pick(row, 'nomorLp', 'nomor_lp', 'Nomor LP', 'NomorLP', 'NOMOR LP'),
+            penyelidik:    pick(row, 'penyelidik', 'Penyelidik', 'PENYELIDIK'),
+            modus:         pick(row, 'modus', 'Modus', 'MODUS', 'uraian', 'Uraian'),
+            saksi:         pick(row, 'saksi', 'Saksi', 'SAKSI'),
+            pasal:         pick(row, 'pasal', 'Pasal', 'PASAL'),
+          };
+        });
         const maxId = Math.max(...kasusData.map(k => k.id), 0);
         nextKasusId = maxId + 1;
         const lpNums = kasusData.filter(k => k.nomorLp).map(k => parseInt(k.nomorLp.split('/')[2]) || 0);
