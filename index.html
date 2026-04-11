@@ -1178,6 +1178,11 @@ body.view-mode .btn-green {
           <tbody id="tabel-kasus-full"></tbody>
         </table>
       </div>
+      <!-- PAGINATION -->
+      <div id="pagination-wrap" style="padding:12px 14px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div id="pagination-info" style="font-size:0.72rem; color:var(--text3); font-weight:600;"></div>
+        <div id="pagination-btns" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+      </div>
     </div>
 
   </div>
@@ -1558,16 +1563,27 @@ function statusBadge(s) {
 
 // ===== KRIMINALITAS =====
 let tskSearchQuery = '';
+let kasusPage = 1;
+const KASUS_PER_PAGE = 10;
 
 function filterKasusByTsk() {
   tskSearchQuery = document.getElementById('search-tsk').value.trim().toLowerCase();
+  kasusPage = 1; // reset ke halaman pertama saat search
   renderKriminalitas();
 }
 
 function clearTskSearch() {
   document.getElementById('search-tsk').value = '';
   tskSearchQuery = '';
+  kasusPage = 1;
   renderKriminalitas();
+}
+
+function goToKasusPage(page) {
+  kasusPage = page;
+  renderKriminalitas();
+  // scroll ke atas tabel
+  document.getElementById('tabel-kasus-full').closest('.card').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function renderKriminalitas() {
@@ -1591,15 +1607,25 @@ function renderKriminalitas() {
   }
 
   const tbody = document.getElementById('tabel-kasus-full');
-  if (filtered.length===0) {
+  if (filtered.length === 0) {
     tbody.innerHTML = tskSearchQuery
       ? `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">⚠️ Tidak ada kasus ditemukan untuk tersangka "${document.getElementById('search-tsk').value.trim()}"</td></tr>`
       : `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">Belum ada kasus</td></tr>`;
+    document.getElementById('pagination-wrap').style.display = 'none';
     return;
   }
-  tbody.innerHTML = filtered.map((k,i)=>`
+
+  // Hitung pagination
+  const totalPages = Math.ceil(filtered.length / KASUS_PER_PAGE);
+  if (kasusPage > totalPages) kasusPage = totalPages;
+  const start = (kasusPage - 1) * KASUS_PER_PAGE;
+  const end = start + KASUS_PER_PAGE;
+  const pageData = filtered.slice(start, end);
+
+  // Render baris tabel
+  tbody.innerHTML = pageData.map((k, i) => `
     <tr>
-      <td>${i+1}</td>
+      <td>${start + i + 1}</td>
       <td style="font-size:0.7rem;min-width:120px">${k.waktuKejadian||'-'}</td>
       <td style="font-weight:600;font-size:0.78rem;min-width:120px">${k.jenis}</td>
       <td style="font-size:0.75rem;color:var(--text2);min-width:120px">${k.tkp}</td>
@@ -1618,6 +1644,40 @@ function renderKriminalitas() {
         <button class="btn btn-red" onclick="deleteKasus(${k.id})">✕</button>
       </td>
     </tr>`).join('');
+
+  // Render pagination
+  const wrap = document.getElementById('pagination-wrap');
+  const info = document.getElementById('pagination-info');
+  const btns = document.getElementById('pagination-btns');
+
+  if (totalPages <= 1) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'flex';
+  info.textContent = `Halaman ${kasusPage} dari ${totalPages} (${filtered.length} kasus)`;
+
+  // Buat tombol halaman
+  let btnHtml = '';
+
+  // Tombol Prev
+  btnHtml += `<button onclick="goToKasusPage(${kasusPage-1})" ${kasusPage===1?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:${kasusPage===1?'#f1f5f9':'white'};color:${kasusPage===1?'var(--text3)':'var(--text2)'};font-size:0.75rem;font-weight:700;cursor:${kasusPage===1?'default':'pointer'};font-family:'Barlow',sans-serif;">‹</button>`;
+
+  // Tombol nomor halaman (max 5 tombol)
+  let startPage = Math.max(1, kasusPage - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+  if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+
+  for (let p = startPage; p <= endPage; p++) {
+    const isActive = p === kasusPage;
+    btnHtml += `<button onclick="goToKasusPage(${p})" style="padding:5px 10px;border-radius:6px;border:1.5px solid ${isActive?'var(--navy)':'var(--border)'};background:${isActive?'var(--navy)':'white'};color:${isActive?'white':'var(--text2)'};font-size:0.75rem;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">${p}</button>`;
+  }
+
+  // Tombol Next
+  btnHtml += `<button onclick="goToKasusPage(${kasusPage+1})" ${kasusPage===totalPages?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:${kasusPage===totalPages?'#f1f5f9':'white'};color:${kasusPage===totalPages?'var(--text3)':'var(--text2)'};font-size:0.75rem;font-weight:700;cursor:${kasusPage===totalPages?'default':'pointer'};font-family:'Barlow',sans-serif;">›</button>`;
+
+  btns.innerHTML = btnHtml;
 }
 
 function addKasus() {
