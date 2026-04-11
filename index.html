@@ -2367,34 +2367,32 @@ function generateLampiranKasus() {
   <table>
     <thead>
       <tr>
-        <th style="width:3%">No</th>
-        <th style="width:5%">No. LP</th>
-        <th style="width:10%">Waktu Kejadian</th>
-        <th style="width:10%">Jenis Kasus</th>
-        <th style="width:10%">TKP</th>
-        <th style="width:10%">Pelaku / TSK</th>
-        <th style="width:12%">Nama Pelapor</th>
-        <th style="width:10%">Barang Bukti</th>
-        <th style="width:8%">Kerugian</th>
-        <th style="width:12%">Uraian Singkat</th>
-        <th style="width:6%">Penyelidik</th>
-        <th style="width:4%">Status</th>
+        <th style="width:2%;text-align:center">No</th>
+        <th style="width:9%">Waktu Kejadian</th>
+        <th style="width:8%">Jenis Kasus</th>
+        <th style="width:9%">TKP</th>
+        <th style="width:8%">Pelaku / TSK</th>
+        <th style="width:9%">Nama Pelapor</th>
+        <th style="width:8%">Barang Bukti</th>
+        <th style="width:6%">Kerugian</th>
+        <th style="width:28%">Uraian Singkat Kejadian</th>
+        <th style="width:8%">Penyelidik</th>
+        <th style="width:5%;text-align:center">Status</th>
       </tr>
     </thead>
     <tbody>
       ${filtered.map((k,i) => `<tr>
-        <td style="text-align:center">${i+1}</td>
-        <td style="font-size:6.5pt">${k.nomorLp||'-'}</td>
-        <td>${k.waktuKejadian||'-'}</td>
-        <td><strong>${k.jenis||'-'}</strong></td>
-        <td>${k.tkp||'-'}</td>
-        <td>${k.tsk||'Tidak diketahui'}</td>
-        <td>${k.pelaporNama||'-'}</td>
-        <td>${k.bb||'Nihil'}</td>
-        <td>${k.kerugian||'Nihil'}</td>
-        <td style="font-size:7pt">${k.modus ? k.modus.substring(0,120)+(k.modus.length>120?'...':'') : '-'}</td>
-        <td>${k.penyelidik||'-'}</td>
-        <td style="text-align:center"><strong>${k.status||'-'}</strong></td>
+        <td style="text-align:center;font-size:7pt">${i+1}</td>
+        <td style="font-size:6.5pt">${k.waktuKejadian||'-'}</td>
+        <td style="font-size:7pt;font-weight:700">${k.jenis||'-'}</td>
+        <td style="font-size:6.5pt">${k.tkp||'-'}</td>
+        <td style="font-size:6.5pt">${k.tsk||'Tidak diketahui'}</td>
+        <td style="font-size:6.5pt">${k.pelaporNama||'-'}</td>
+        <td style="font-size:6.5pt">${k.bb||'Nihil'}</td>
+        <td style="font-size:6.5pt">${k.kerugian||'Nihil'}</td>
+        <td style="font-size:7pt;line-height:1.5;text-align:justify">${k.modus||'-'}</td>
+        <td style="font-size:6.5pt">${k.penyelidik||'-'}</td>
+        <td style="text-align:center;font-size:7pt;font-weight:700">${k.status||'-'}</td>
       </tr>`).join('')}
     </tbody>
   </table>
