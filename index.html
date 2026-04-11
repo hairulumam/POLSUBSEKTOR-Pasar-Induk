@@ -190,7 +190,7 @@ body {
 .card-body { padding: 14px 16px; }
 
 /* TABLE */
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; table-layout: fixed; }
 .data-table th {
   background: var(--navy);
   color: white;
@@ -203,9 +203,27 @@ body {
 }
 .data-table th:first-child { border-radius: 6px 0 0 6px; }
 .data-table th:last-child { border-radius: 0 6px 6px 0; }
-.data-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.data-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 0; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: #f8fafc; }
+
+/* Lebar kolom tabel kasus */
+#tabel-kasus-full tr td:nth-child(1)  { width: 30px; }   /* NO */
+#tabel-kasus-full tr td:nth-child(2)  { width: 110px; }  /* WAKTU */
+#tabel-kasus-full tr td:nth-child(3)  { width: 110px; }  /* KASUS */
+#tabel-kasus-full tr td:nth-child(4)  { width: 110px; }  /* TKP */
+#tabel-kasus-full tr td:nth-child(5)  { width: 90px; }   /* TSK */
+#tabel-kasus-full tr td:nth-child(6)  { width: 90px; }   /* BB */
+#tabel-kasus-full tr td:nth-child(7)  { width: 90px; }   /* PELAPOR */
+#tabel-kasus-full tr td:nth-child(8)  { width: 80px; }   /* KERUGIAN */
+#tabel-kasus-full tr td:nth-child(9)  { width: 70px; }   /* KET */
+#tabel-kasus-full tr td:nth-child(10) { width: 80px; }   /* STATUS */
+#tabel-kasus-full tr td:nth-child(11) { width: 50px; }   /* LP */
+#tabel-kasus-full tr td:nth-child(12) { width: 70px; }   /* AKSI */
+
+/* header kolom ikut lebar yang sama */
+#tabel-kasus-full + * th:nth-child(1)  { width: 30px; }
+table:has(#tabel-kasus-full) th:nth-child(1)  { width: 30px; }
 
 /* BADGES */
 .badge {
@@ -1159,6 +1177,20 @@ body.view-mode .btn-green {
       </div>
       <div class="card-body" style="padding:0; overflow-x:auto;">
         <table class="data-table">
+          <colgroup>
+            <col style="width:30px">
+            <col style="width:110px">
+            <col style="width:110px">
+            <col style="width:110px">
+            <col style="width:90px">
+            <col style="width:90px">
+            <col style="width:90px">
+            <col style="width:80px">
+            <col style="width:70px">
+            <col style="width:80px">
+            <col style="width:50px">
+            <col style="width:70px">
+          </colgroup>
           <thead>
             <tr>
               <th>NO</th>
@@ -1625,21 +1657,21 @@ function renderKriminalitas() {
   // Render baris tabel
   tbody.innerHTML = pageData.map((k, i) => `
     <tr>
-      <td>${start + i + 1}</td>
-      <td style="font-size:0.7rem;min-width:120px">${k.waktuKejadian||'-'}</td>
-      <td style="font-weight:600;font-size:0.78rem;min-width:120px">${k.jenis}</td>
-      <td style="font-size:0.75rem;color:var(--text2);min-width:120px">${k.tkp}</td>
-      <td style="font-size:0.75rem;min-width:100px">${tskSearchQuery && (k.tsk||'').toLowerCase().includes(tskSearchQuery) ? `<span style="background:#fef3c7;padding:1px 4px;border-radius:4px;font-weight:700">${k.tsk||'-'}</span>` : k.tsk||'-'}</td>
-      <td style="font-size:0.75rem;min-width:120px">${k.bb||'Nihil'}</td>
-      <td style="font-size:0.75rem;min-width:100px">${k.pelaporNama||'-'}</td>
-      <td style="font-size:0.75rem;font-weight:600;min-width:90px">${k.kerugian||'Nihil'}</td>
-      <td style="font-size:0.72rem">${k.ket||'-'}</td>
+      <td title="${i+1}">${start + i + 1}</td>
+      <td title="${k.waktuKejadian||'-'}" style="font-size:0.7rem">${k.waktuKejadian||'-'}</td>
+      <td title="${k.jenis||'-'}" style="font-weight:600;font-size:0.78rem">${k.jenis}</td>
+      <td title="${k.tkp||'-'}" style="font-size:0.75rem;color:var(--text2)">${k.tkp}</td>
+      <td title="${k.tsk||'-'}" style="font-size:0.75rem">${tskSearchQuery && (k.tsk||'').toLowerCase().includes(tskSearchQuery) ? `<span style="background:#fef3c7;padding:1px 4px;border-radius:4px;font-weight:700">${k.tsk||'-'}</span>` : k.tsk||'-'}</td>
+      <td title="${k.bb||'Nihil'}" style="font-size:0.75rem">${k.bb||'Nihil'}</td>
+      <td title="${k.pelaporNama||'-'}" style="font-size:0.75rem">${k.pelaporNama||'-'}</td>
+      <td title="${k.kerugian||'Nihil'}" style="font-size:0.75rem;font-weight:600">${k.kerugian||'Nihil'}</td>
+      <td title="${k.ket||'-'}" style="font-size:0.72rem">${k.ket||'-'}</td>
       <td>${statusBadge(k.status)}</td>
       <td>${k.ket==='Dibuatkan LP'
         ? `<button class="btn-green" onclick="showLP(${k.id})">📄 LP</button>`
         : '<span style="color:var(--text3);font-size:0.7rem">—</span>'}
       </td>
-      <td style="display:flex;gap:4px">
+      <td style="overflow:visible;white-space:nowrap">
         <button class="btn btn-outline btn-sm" onclick="editKasus(${k.id})" style="font-size:0.7rem;padding:4px 8px">✏️</button>
         <button class="btn btn-red" onclick="deleteKasus(${k.id})">✕</button>
       </td>
