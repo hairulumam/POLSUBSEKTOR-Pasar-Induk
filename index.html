@@ -791,6 +791,7 @@ body.view-mode .btn-green {
   <div class="tab" onclick="switchTab('kriminalitas',this)">🚨 Kriminalitas</div>
   <div class="tab" onclick="switchTab('personel',this)">👮 Personel</div>
   <div class="tab" onclick="switchTab('piket',this)">📅 Piket</div>
+  <div class="tab" onclick="switchTab('pelaku',this)">🦹 Daftar Pelaku</div>
   <div class="tab" onclick="switchTab('laporan',this)">🖨️ Cetak Laporan</div>
 </div>
 
@@ -1171,6 +1172,32 @@ body.view-mode .btn-green {
             placeholder="Cari nama / NIK tersangka..."
             oninput="filterKasusByTsk()">
         </div>
+        <!-- PROFIL PELAKU CARD -->
+        <div id="pelaku-profile-card" style="display:none;background:linear-gradient(135deg,#0a1628,#0f2044);border-radius:12px;padding:14px;margin-bottom:10px;color:white">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div id="ppc-foto" style="width:64px;height:64px;border-radius:10px;background:#1e3a6e;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;overflow:hidden"></div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span id="ppc-nama" style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;letter-spacing:0.5px"></span>
+                <span style="background:#dc2626;font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:0.5px">⚠️ DPO / PELAKU</span>
+              </div>
+              <div id="ppc-nik" style="font-family:'DM Mono',monospace;font-size:0.7rem;opacity:0.6;margin-top:2px"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px;font-size:0.72rem">
+                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">TTL</span><div id="ppc-ttl" style="margin-top:1px;font-weight:600"></div></div>
+                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Kelamin</span><div id="ppc-jk" style="margin-top:1px;font-weight:600"></div></div>
+                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">No. HP</span><div id="ppc-hp" style="margin-top:1px;font-weight:600"></div></div>
+                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Status</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
+                <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat KTP</span><div id="ppc-alamat-ktp" style="margin-top:1px;font-weight:600"></div></div>
+                <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat Tinggal</span><div id="ppc-alamat-tinggal" style="margin-top:1px;font-weight:600"></div></div>
+                <div id="ppc-catatan-wrap" style="grid-column:1/-1;display:none"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Catatan</span><div id="ppc-catatan" style="margin-top:1px;opacity:0.85;line-height:1.5"></div></div>
+              </div>
+              <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)">
+                <span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Total Kasus Tercatat: </span>
+                <span id="ppc-total-kasus" style="font-weight:800;font-size:0.9rem;color:#fbbf24"></span>
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="search-tsk-info" style="display:none;padding:6px 10px;background:#fef3c7;border-radius:8px;font-size:0.75rem;font-weight:700;color:#b45309;margin-bottom:10px;display:flex;align-items:center;gap:6px">
           <span>🕵️</span>
           <span id="search-tsk-label"></span>
@@ -1340,6 +1367,93 @@ body.view-mode .btn-green {
         <button class="btn btn-primary admin-only" onclick="addPiket()">💾 Simpan Jadwal Piket</button>
       </div>
     </div>
+  </div>
+
+  <!-- ========== DAFTAR PELAKU ========== -->
+  <div class="section" id="sec-pelaku">
+
+    <div class="card admin-only">
+      <div class="card-header"><span>➕</span><h3>Tambah / Edit Data Pelaku</h3></div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap Pelaku</label>
+            <input type="text" class="form-input" id="p-nama" placeholder="cth: RAUL / ANDERSON HASIBUAN">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIK</label>
+            <input type="text" class="form-input" id="p-nik" placeholder="16 digit NIK">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tempat, Tanggal Lahir</label>
+            <input type="text" class="form-input" id="p-ttl" placeholder="cth: Jakarta, 24 April 2003">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jenis Kelamin</label>
+            <select class="form-select" id="p-jk">
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status (Anak / Istri / Suami dll)</label>
+            <input type="text" class="form-input" id="p-status-keluarga" placeholder="cth: Anak, Suami, Istri">
+          </div>
+          <div class="form-group">
+            <label class="form-label">No. HP / Keluarga</label>
+            <input type="text" class="form-input" id="p-hp" placeholder="cth: 0812-xxxx-xxxx">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alamat KTP</label>
+          <input type="text" class="form-input" id="p-alamat-ktp" placeholder="Alamat sesuai KTP">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alamat Tempat Tinggal</label>
+          <input type="text" class="form-input" id="p-alamat-tinggal" placeholder="Alamat domisili saat ini">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catatan / Keterangan Tambahan</label>
+          <textarea class="form-textarea" id="p-catatan" placeholder="cth: Residivis, modus operandi, ciri fisik..." style="min-height:60px"></textarea>
+        </div>
+        <!-- UPLOAD FOTO -->
+        <div class="form-group">
+          <label class="form-label">Foto Pelaku</label>
+          <div id="p-foto-wrap" style="display:flex;align-items:center;gap:12px;margin-top:4px">
+            <div id="p-foto-preview" style="width:72px;height:72px;border-radius:10px;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;overflow:hidden">👤</div>
+            <div>
+              <input type="file" id="p-foto-input" accept="image/*" style="display:none" onchange="previewFoto(this)">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('p-foto-input').click()">📷 Pilih Foto</button>
+              <div style="font-size:0.68rem;color:var(--text3);margin-top:4px">JPG/PNG, max 2MB</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="savePelaku()">💾 Simpan Data Pelaku</button>
+      </div>
+    </div>
+
+    <!-- DAFTAR PELAKU -->
+    <div class="card">
+      <div class="card-header">
+        <span>🦹</span><h3>Daftar Pelaku Tercatat</h3>
+        <span class="badge badge-merah" id="badge-pelaku-count">0</span>
+      </div>
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+        <div style="position:relative">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.85rem;pointer-events:none">🔍</span>
+          <input type="text" class="form-input" id="search-pelaku-list"
+            style="padding-left:32px;padding-top:8px;padding-bottom:8px;font-size:0.82rem"
+            placeholder="Cari nama atau NIK pelaku..."
+            oninput="renderPelakuList()">
+        </div>
+      </div>
+      <div class="card-body" id="list-pelaku" style="padding:12px"></div>
+    </div>
+
   </div>
 
   <!-- ========== LAPORAN CETAK ========== -->
@@ -1615,7 +1729,8 @@ const KASUS_PER_PAGE = 10;
 
 function filterKasusByTsk() {
   tskSearchQuery = document.getElementById('search-tsk').value.trim().toLowerCase();
-  kasusPage = 1; // reset ke halaman pertama saat search
+  kasusPage = 1;
+  showPelakuProfile(tskSearchQuery);
   renderKriminalitas();
 }
 
@@ -1623,6 +1738,7 @@ function clearTskSearch() {
   document.getElementById('search-tsk').value = '';
   tskSearchQuery = '';
   kasusPage = 1;
+  document.getElementById('pelaku-profile-card').style.display = 'none';
   renderKriminalitas();
 }
 
@@ -2539,12 +2655,193 @@ function saveTtdLP() {
 }
 
 // ===== TABS =====
+// ===== DAFTAR PELAKU =====
+let pelakuData = [];
+let editPelakuId = null;
+let pelakuFotoBase64 = '';
+
+function loadPelakuFromStorage() {
+  try {
+    const raw = localStorage.getItem('pelakuData');
+    if (raw) pelakuData = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function savePelakuToStorage() {
+  try { localStorage.setItem('pelakuData', JSON.stringify(pelakuData)); } catch(e) {}
+}
+
+function previewFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('⚠️ Foto maksimal 2MB'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    pelakuFotoBase64 = e.target.result;
+    const prev = document.getElementById('p-foto-preview');
+    prev.innerHTML = `<img src="${pelakuFotoBase64}" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function savePelaku() {
+  const nama = document.getElementById('p-nama').value.trim();
+  const nik  = document.getElementById('p-nik').value.trim();
+  if (!nama) { showToast('⚠️ Nama pelaku wajib diisi'); return; }
+
+  const data = {
+    id: editPelakuId || Date.now(),
+    nama,
+    nik,
+    ttl:            document.getElementById('p-ttl').value.trim(),
+    jk:             document.getElementById('p-jk').value,
+    statusKeluarga: document.getElementById('p-status-keluarga').value.trim(),
+    hp:             document.getElementById('p-hp').value.trim(),
+    alamatKtp:      document.getElementById('p-alamat-ktp').value.trim(),
+    alamatTinggal:  document.getElementById('p-alamat-tinggal').value.trim(),
+    catatan:        document.getElementById('p-catatan').value.trim(),
+    foto:           pelakuFotoBase64,
+  };
+
+  if (editPelakuId) {
+    const idx = pelakuData.findIndex(p => p.id === editPelakuId);
+    if (idx !== -1) pelakuData[idx] = data;
+    editPelakuId = null;
+    showToast('✅ Data pelaku diperbarui');
+  } else {
+    pelakuData.push(data);
+    showToast('✅ Data pelaku disimpan');
+  }
+
+  savePelakuToStorage();
+  resetPelakuForm();
+  renderPelakuList();
+}
+
+function resetPelakuForm() {
+  ['p-nama','p-nik','p-ttl','p-status-keluarga','p-hp','p-alamat-ktp','p-alamat-tinggal','p-catatan'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('p-jk').value = 'Laki-laki';
+  document.getElementById('p-foto-preview').innerHTML = '👤';
+  document.getElementById('p-foto-input').value = '';
+  pelakuFotoBase64 = '';
+  editPelakuId = null;
+}
+
+function editPelaku(id) {
+  const p = pelakuData.find(x => x.id === id);
+  if (!p) return;
+  editPelakuId = id;
+  document.getElementById('p-nama').value           = p.nama || '';
+  document.getElementById('p-nik').value            = p.nik || '';
+  document.getElementById('p-ttl').value            = p.ttl || '';
+  document.getElementById('p-jk').value             = p.jk || 'Laki-laki';
+  document.getElementById('p-status-keluarga').value= p.statusKeluarga || '';
+  document.getElementById('p-hp').value             = p.hp || '';
+  document.getElementById('p-alamat-ktp').value     = p.alamatKtp || '';
+  document.getElementById('p-alamat-tinggal').value = p.alamatTinggal || '';
+  document.getElementById('p-catatan').value        = p.catatan || '';
+  pelakuFotoBase64 = p.foto || '';
+  const prev = document.getElementById('p-foto-preview');
+  prev.innerHTML = p.foto ? `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">` : '👤';
+  // scroll ke form
+  document.getElementById('p-nama').scrollIntoView({behavior:'smooth', block:'center'});
+  showToast('✏️ Mode edit — perbarui data lalu simpan');
+}
+
+function deletePelaku(id) {
+  pelakuData = pelakuData.filter(p => p.id !== id);
+  savePelakuToStorage();
+  showToast('🗑️ Data pelaku dihapus');
+  renderPelakuList();
+}
+
+function renderPelakuList() {
+  const q = (document.getElementById('search-pelaku-list')?.value || '').trim().toLowerCase();
+  const filtered = q
+    ? pelakuData.filter(p => (p.nama||'').toLowerCase().includes(q) || (p.nik||'').toLowerCase().includes(q))
+    : pelakuData;
+  document.getElementById('badge-pelaku-count').textContent = pelakuData.length;
+  const el = document.getElementById('list-pelaku');
+  if (!el) return;
+  if (filtered.length === 0) {
+    el.innerHTML = `<p style="text-align:center;color:var(--text3);padding:20px 0">${q ? 'Tidak ditemukan' : 'Belum ada data pelaku'}</p>`;
+    return;
+  }
+  el.innerHTML = filtered.map(p => {
+    const kasusCount = kasusData.filter(k => (k.tsk||'').toLowerCase().includes((p.nama||'').toLowerCase()) && p.nama.length > 2).length;
+    return `
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:white">
+      <div style="width:52px;height:52px;border-radius:8px;background:${getColor(p.nama)};display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;overflow:hidden;border:2px solid var(--border)">
+        ${p.foto ? `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:white;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem">${initials(p.nama)}</span>`}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-weight:800;font-size:0.9rem">${p.nama}</span>
+          ${kasusCount > 0 ? `<span style="background:#fee2e2;color:#dc2626;font-size:0.6rem;font-weight:700;padding:1px 6px;border-radius:20px">${kasusCount} kasus</span>` : ''}
+        </div>
+        ${p.nik ? `<div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text3)">NIK: ${p.nik}</div>` : ''}
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:3px">${[p.ttl, p.jk, p.statusKeluarga].filter(Boolean).join(' · ')}</div>
+        ${p.hp ? `<div style="font-size:0.72rem;color:var(--text2)">📞 ${p.hp}</div>` : ''}
+        ${p.alamatTinggal ? `<div style="font-size:0.7rem;color:var(--text3);margin-top:2px">📍 ${p.alamatTinggal}</div>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button class="btn btn-outline btn-sm" onclick="editPelaku(${p.id})" style="font-size:0.7rem;padding:4px 8px">✏️</button>
+        <button class="btn btn-red" onclick="deletePelaku(${p.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showPelakuProfile(query) {
+  const card = document.getElementById('pelaku-profile-card');
+  if (!query || query.length < 2) { card.style.display = 'none'; return; }
+  // Cari pelaku yang namanya mengandung query
+  const found = pelakuData.find(p =>
+    (p.nama||'').toLowerCase().includes(query) ||
+    (p.nik||'').toLowerCase().includes(query)
+  );
+  if (!found) { card.style.display = 'none'; return; }
+
+  const kasusCount = kasusData.filter(k =>
+    (k.tsk||'').toLowerCase().includes((found.nama||'').toLowerCase()) && found.nama.length > 2
+  ).length;
+
+  document.getElementById('ppc-nama').textContent         = found.nama;
+  document.getElementById('ppc-nik').textContent          = found.nik ? 'NIK: ' + found.nik : '';
+  document.getElementById('ppc-ttl').textContent          = found.ttl || '-';
+  document.getElementById('ppc-jk').textContent           = found.jk || '-';
+  document.getElementById('ppc-hp').textContent           = found.hp || '-';
+  document.getElementById('ppc-status-kel').textContent   = found.statusKeluarga || '-';
+  document.getElementById('ppc-alamat-ktp').textContent   = found.alamatKtp || '-';
+  document.getElementById('ppc-alamat-tinggal').textContent = found.alamatTinggal || '-';
+  document.getElementById('ppc-total-kasus').textContent  = kasusCount + ' kasus';
+
+  const catatanWrap = document.getElementById('ppc-catatan-wrap');
+  if (found.catatan) {
+    document.getElementById('ppc-catatan').textContent = found.catatan;
+    catatanWrap.style.display = 'block';
+  } else {
+    catatanWrap.style.display = 'none';
+  }
+
+  const fotoEl = document.getElementById('ppc-foto');
+  fotoEl.innerHTML = found.foto
+    ? `<img src="${found.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+    : `<span style="font-size:1.8rem">👤</span>`;
+
+  card.style.display = 'block';
+}
+
 function switchTab(id, el) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   el.classList.add('active');
   if (id==='piket') renderPiket();
+  if (id==='pelaku') renderPelakuList();
 }
 
 function renderAll() {
@@ -2562,6 +2859,7 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
+  loadPelakuFromStorage();
   await loadKasusFromSheet();
   renderAll();
   renderPiket();
