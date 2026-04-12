@@ -790,7 +790,6 @@ body.view-mode .btn-green {
   <div class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</div>
   <div class="tab" onclick="switchTab('kriminalitas',this)">🚨 Kriminalitas</div>
   <div class="tab" onclick="switchTab('personel',this)">👮 Personel</div>
-  <div class="tab" onclick="switchTab('piket',this)">📅 Piket</div>
   <div class="tab" onclick="switchTab('pelaku',this)">🦹 Daftar Pelaku</div>
   <div class="tab" onclick="switchTab('laporan',this)">🖨️ Cetak Laporan</div>
 </div>
@@ -1157,6 +1156,33 @@ body.view-mode .btn-green {
       </div>
     </div>
 
+    <!-- PROFIL PELAKU - muncul saat search -->
+    <div id="pelaku-profile-card" style="display:none;background:linear-gradient(135deg,#0a1628,#0f2044);border-radius:12px;padding:14px;margin-bottom:14px;color:white">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div id="ppc-foto" style="width:64px;height:64px;border-radius:10px;background:#1e3a6e;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;overflow:hidden"></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span id="ppc-nama" style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;letter-spacing:0.5px"></span>
+            <span style="background:#dc2626;font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:0.5px">⚠️ DPO / PELAKU</span>
+          </div>
+          <div id="ppc-nik" style="font-family:'DM Mono',monospace;font-size:0.7rem;opacity:0.6;margin-top:2px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px;font-size:0.72rem">
+            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">TTL</span><div id="ppc-ttl" style="margin-top:1px;font-weight:600"></div></div>
+            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Kelamin</span><div id="ppc-jk" style="margin-top:1px;font-weight:600"></div></div>
+            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">No. HP</span><div id="ppc-hp" style="margin-top:1px;font-weight:600"></div></div>
+            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Status</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
+            <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat KTP</span><div id="ppc-alamat-ktp" style="margin-top:1px;font-weight:600"></div></div>
+            <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat Tinggal</span><div id="ppc-alamat-tinggal" style="margin-top:1px;font-weight:600"></div></div>
+            <div id="ppc-catatan-wrap" style="grid-column:1/-1;display:none"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Catatan</span><div id="ppc-catatan" style="margin-top:1px;opacity:0.85;line-height:1.5"></div></div>
+          </div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Total Kasus Tercatat: </span>
+            <span id="ppc-total-kasus" style="font-weight:800;font-size:0.9rem;color:#fbbf24"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- DAFTAR KASUS -->
     <div class="card">
       <div class="card-header">
@@ -1171,32 +1197,6 @@ body.view-mode .btn-green {
             style="padding-left:32px;padding-top:8px;padding-bottom:8px;font-size:0.82rem"
             placeholder="Cari nama / NIK tersangka..."
             oninput="filterKasusByTsk()">
-        </div>
-        <!-- PROFIL PELAKU CARD -->
-        <div id="pelaku-profile-card" style="display:none;background:linear-gradient(135deg,#0a1628,#0f2044);border-radius:12px;padding:14px;margin-bottom:10px;color:white">
-          <div style="display:flex;gap:14px;align-items:flex-start">
-            <div id="ppc-foto" style="width:64px;height:64px;border-radius:10px;background:#1e3a6e;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;overflow:hidden"></div>
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span id="ppc-nama" style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;letter-spacing:0.5px"></span>
-                <span style="background:#dc2626;font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:0.5px">⚠️ DPO / PELAKU</span>
-              </div>
-              <div id="ppc-nik" style="font-family:'DM Mono',monospace;font-size:0.7rem;opacity:0.6;margin-top:2px"></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px;font-size:0.72rem">
-                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">TTL</span><div id="ppc-ttl" style="margin-top:1px;font-weight:600"></div></div>
-                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Kelamin</span><div id="ppc-jk" style="margin-top:1px;font-weight:600"></div></div>
-                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">No. HP</span><div id="ppc-hp" style="margin-top:1px;font-weight:600"></div></div>
-                <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Status</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
-                <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat KTP</span><div id="ppc-alamat-ktp" style="margin-top:1px;font-weight:600"></div></div>
-                <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat Tinggal</span><div id="ppc-alamat-tinggal" style="margin-top:1px;font-weight:600"></div></div>
-                <div id="ppc-catatan-wrap" style="grid-column:1/-1;display:none"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Catatan</span><div id="ppc-catatan" style="margin-top:1px;opacity:0.85;line-height:1.5"></div></div>
-              </div>
-              <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)">
-                <span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Total Kasus Tercatat: </span>
-                <span id="ppc-total-kasus" style="font-weight:800;font-size:0.9rem;color:#fbbf24"></span>
-              </div>
-            </div>
-          </div>
         </div>
         <div id="search-tsk-info" style="display:none;padding:6px 10px;background:#fef3c7;border-radius:8px;font-size:0.75rem;font-weight:700;color:#b45309;margin-bottom:10px;display:flex;align-items:center;gap:6px">
           <span>🕵️</span>
@@ -1320,55 +1320,6 @@ body.view-mode .btn-green {
     </div>
   </div>
 
-  <!-- ========== PIKET ========== -->
-  <div class="section" id="sec-piket">
-    <div class="card">
-      <div class="card-header">
-        <span>📅</span><h3 id="piket-month-label">Jadwal Piket Maret 2026</h3>
-        <div style="display:flex;gap:6px;margin-left:auto">
-          <button class="btn btn-outline btn-sm" onclick="changePiketMonth(-1)">‹</button>
-          <button class="btn btn-outline btn-sm" onclick="changePiketMonth(1)">›</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; font-size:0.7rem;">
-          <span><span style="background:#0891b2;display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;"></span>Pagi</span>
-          <span><span style="background:#059669;display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;"></span>Sore</span>
-          <span><span style="background:#6d28d9;display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;"></span>Malam</span>
-        </div>
-        <div class="piket-grid" id="piket-day-headers"></div>
-        <div class="piket-grid" id="piket-calendar"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span>➕</span><h3>Atur Jadwal Piket</h3></div>
-      <div class="card-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Tanggal</label>
-            <input type="date" class="form-input" id="f-piket-tgl">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Shift</label>
-            <select class="form-select" id="f-piket-shift">
-              <option value="pagi">Pagi (07:00–14:00)</option>
-              <option value="sore">Sore (14:00–21:00)</option>
-              <option value="malam">Malam (21:00–07:00)</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Petugas Piket</label>
-          <select class="form-select" id="f-piket-petugas">
-            <option value="">-- Pilih --</option>
-          </select>
-        </div>
-        <button class="btn btn-primary admin-only" onclick="addPiket()">💾 Simpan Jadwal Piket</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ========== DAFTAR PELAKU ========== -->
   <div class="section" id="sec-pelaku">
 
@@ -1441,15 +1392,6 @@ body.view-mode .btn-green {
       <div class="card-header">
         <span>🦹</span><h3>Daftar Pelaku Tercatat</h3>
         <span class="badge badge-merah" id="badge-pelaku-count">0</span>
-      </div>
-      <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
-        <div style="position:relative">
-          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.85rem;pointer-events:none">🔍</span>
-          <input type="text" class="form-input" id="search-pelaku-list"
-            style="padding-left:32px;padding-top:8px;padding-bottom:8px;font-size:0.82rem"
-            placeholder="Cari nama atau NIK pelaku..."
-            oninput="renderPelakuList()">
-        </div>
       </div>
       <div class="card-body" id="list-pelaku" style="padding:12px"></div>
     </div>
@@ -2759,19 +2701,15 @@ function deletePelaku(id) {
 }
 
 function renderPelakuList() {
-  const q = (document.getElementById('search-pelaku-list')?.value || '').trim().toLowerCase();
-  const filtered = q
-    ? pelakuData.filter(p => (p.nama||'').toLowerCase().includes(q) || (p.nik||'').toLowerCase().includes(q))
-    : pelakuData;
   document.getElementById('badge-pelaku-count').textContent = pelakuData.length;
   const el = document.getElementById('list-pelaku');
   if (!el) return;
-  if (filtered.length === 0) {
-    el.innerHTML = `<p style="text-align:center;color:var(--text3);padding:20px 0">${q ? 'Tidak ditemukan' : 'Belum ada data pelaku'}</p>`;
+  if (pelakuData.length === 0) {
+    el.innerHTML = `<p style="text-align:center;color:var(--text3);padding:20px 0">Belum ada data pelaku</p>`;
     return;
   }
-  el.innerHTML = filtered.map(p => {
-    const kasusCount = kasusData.filter(k => (k.tsk||'').toLowerCase().includes((p.nama||'').toLowerCase()) && p.nama.length > 2).length;
+  el.innerHTML = pelakuData.map(p => {
+    const kasusCount = kasusData.filter(k => p.nama && p.nama.length > 2 && (k.tsk||'').toLowerCase().includes((p.nama||'').toLowerCase())).length;
     return `
     <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:white">
       <div style="width:52px;height:52px;border-radius:8px;background:${getColor(p.nama)};display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;overflow:hidden;border:2px solid var(--border)">
