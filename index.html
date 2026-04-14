@@ -1207,7 +1207,7 @@ body.view-mode .btn-green {
       <div class="card-body" style="padding:0; overflow-x:auto;">
         <table class="data-table">
           <colgroup>
-            <col style="width:28px">
+            <col style="width:36px">
             <col style="width:100px">
             <col style="width:95px">
             <col style="width:95px">
@@ -1463,7 +1463,7 @@ let nextPersonelId = 1;
 let lpCounter = 1; // nomor LP mulai dari 1
 
 // ===== CONFIG =====
-const ADMIN_PIN = '124578';
+const ADMIN_PIN = '771187';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1AF8hnjIQaWN3n3vlV3lz9Q0B0KK3-7N8P99Qf35y8TdCk8CwbH-p43XpMxqpvBC8/exec';
 let gsConnected = false;
 
@@ -1729,7 +1729,7 @@ function renderKriminalitas() {
   // Render baris tabel
   tbody.innerHTML = pageData.map((k, i) => `
     <tr class="kasus-row" onclick="toggleKasusRow(this, ${k.id})" style="cursor:pointer" title="Klik untuk lihat detail">
-      <td>${start + i + 1}</td>
+      <td style="text-align:center;font-size:0.75rem;font-weight:700;overflow:visible;white-space:nowrap;max-width:none">${start + i + 1}</td>
       <td style="font-size:0.7rem">${k.waktuKejadian||'-'}</td>
       <td style="font-weight:600;font-size:0.78rem">${k.jenis}</td>
       <td style="font-size:0.75rem;color:var(--text2)">${k.tkp}</td>
