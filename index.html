@@ -909,6 +909,7 @@ body.view-mode .btn-green {
                 <option>Penipuan / Penggelapan</option>
                 <option>Premanisme / Pungli</option>
                 <option>Perkelahian / Penganiayaan</option>
+                <option>Pengeroyokan</option>
                 <option>Narkoba</option>
                 <option>Pelanggaran Lalu Lintas</option>
                 <option>Kebakaran</option>
@@ -1050,6 +1051,7 @@ body.view-mode .btn-green {
                 <option>Penipuan / Penggelapan</option>
                 <option>Premanisme / Pungli</option>
                 <option>Perkelahian / Penganiayaan</option>
+                <option>Pengeroyokan</option>
                 <option>Narkoba</option>
                 <option>Pelanggaran Lalu Lintas</option>
                 <option>Kebakaran</option>
@@ -1878,7 +1880,7 @@ function editKasus(id) {
         <div class="form-group">
           <label class="form-label">Jenis Kasus</label>
           <select class="form-select" id="edit-jenis">
-            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Narkoba','Pelanggaran Lalu Lintas','Kebakaran','Lain-lain']
+            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Pengeroyokan','Narkoba','Pelanggaran Lalu Lintas','Kebakaran','Lain-lain']
               .map(j=>`<option ${k.jenis===j?'selected':''}>${j}</option>`).join('')}
           </select>
         </div>
@@ -2601,15 +2603,38 @@ let pelakuData = [];
 let editPelakuId = null;
 let pelakuFotoBase64 = '';
 
-function loadPelakuFromStorage() {
-  try {
-    const raw = localStorage.getItem('pelakuData');
-    if (raw) pelakuData = JSON.parse(raw);
-  } catch(e) {}
+// Foto tetap di localStorage, biodata di Sheet
+// Key localStorage foto: 'pelaku_foto_<id>'
+
+function saveFotoLokal(id, base64) {
+  try { if (base64) localStorage.setItem('pelaku_foto_' + id, base64); } catch(e) {}
+}
+function getFotoLokal(id) {
+  try { return localStorage.getItem('pelaku_foto_' + id) || ''; } catch(e) { return ''; }
+}
+function deleteFotoLokal(id) {
+  try { localStorage.removeItem('pelaku_foto_' + id); } catch(e) {}
 }
 
-function savePelakuToStorage() {
-  try { localStorage.setItem('pelakuData', JSON.stringify(pelakuData)); } catch(e) {}
+async function loadPelakuFromStorage() {
+  // Load biodata dari Sheet, foto dari localStorage
+  try {
+    const res = await fetch(APPS_SCRIPT_URL);
+    const json = await res.json();
+    if (json.pelaku) {
+      pelakuData = json.pelaku.map(p => ({
+        ...p,
+        id: Number(p.id),
+        foto: getFotoLokal(p.id)
+      }));
+    }
+  } catch(e) {
+    // fallback: coba localStorage lama jika Sheet gagal
+    try {
+      const raw = localStorage.getItem('pelakuData');
+      if (raw) pelakuData = JSON.parse(raw);
+    } catch(e2) {}
+  }
 }
 
 function previewFoto(input) {
@@ -2625,13 +2650,12 @@ function previewFoto(input) {
   reader.readAsDataURL(file);
 }
 
-function savePelaku() {
+async function savePelaku() {
   const nama = document.getElementById('p-nama').value.trim();
   const nik  = document.getElementById('p-nik').value.trim();
   if (!nama) { showToast('⚠️ Nama pelaku wajib diisi'); return; }
 
-  const data = {
-    id: editPelakuId || Date.now(),
+  const biodata = {
     nama,
     nik,
     ttl:            document.getElementById('p-ttl').value.trim(),
@@ -2641,22 +2665,44 @@ function savePelaku() {
     alamatKtp:      document.getElementById('p-alamat-ktp').value.trim(),
     alamatTinggal:  document.getElementById('p-alamat-tinggal').value.trim(),
     catatan:        document.getElementById('p-catatan').value.trim(),
-    foto:           pelakuFotoBase64,
   };
 
-  if (editPelakuId) {
-    const idx = pelakuData.findIndex(p => p.id === editPelakuId);
-    if (idx !== -1) pelakuData[idx] = data;
-    editPelakuId = null;
-    showToast('✅ Data pelaku diperbarui');
-  } else {
-    pelakuData.push(data);
-    showToast('✅ Data pelaku disimpan');
-  }
+  showToast('⏳ Menyimpan...');
 
-  savePelakuToStorage();
-  resetPelakuForm();
-  renderPelakuList();
+  try {
+    const action = editPelakuId ? 'updatePelaku' : 'addPelaku';
+    if (editPelakuId) biodata.id = editPelakuId;
+
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, pelaku: biodata })
+    });
+    const json = await res.json();
+
+    if (!json.ok) throw new Error(json.error);
+
+    const finalId = editPelakuId || json.id;
+
+    // Simpan foto ke localStorage dengan ID yang sudah fix
+    if (pelakuFotoBase64) saveFotoLokal(finalId, pelakuFotoBase64);
+
+    // Update state lokal
+    if (editPelakuId) {
+      const idx = pelakuData.findIndex(p => p.id === editPelakuId);
+      if (idx !== -1) pelakuData[idx] = { ...biodata, id: finalId, foto: pelakuFotoBase64 || getFotoLokal(finalId) };
+      showToast('✅ Data pelaku diperbarui');
+    } else {
+      pelakuData.push({ ...biodata, id: finalId, foto: pelakuFotoBase64 });
+      showToast('✅ Data pelaku disimpan ke Sheet');
+    }
+
+    editPelakuId = null;
+    resetPelakuForm();
+    renderPelakuList();
+
+  } catch(err) {
+    showToast('❌ Gagal simpan: ' + err.message);
+  }
 }
 
 function resetPelakuForm() {
@@ -2675,28 +2721,40 @@ function editPelaku(id) {
   const p = pelakuData.find(x => x.id === id);
   if (!p) return;
   editPelakuId = id;
-  document.getElementById('p-nama').value           = p.nama || '';
-  document.getElementById('p-nik').value            = p.nik || '';
-  document.getElementById('p-ttl').value            = p.ttl || '';
-  document.getElementById('p-jk').value             = p.jk || 'Laki-laki';
-  document.getElementById('p-status-keluarga').value= p.statusKeluarga || '';
-  document.getElementById('p-hp').value             = p.hp || '';
-  document.getElementById('p-alamat-ktp').value     = p.alamatKtp || '';
-  document.getElementById('p-alamat-tinggal').value = p.alamatTinggal || '';
-  document.getElementById('p-catatan').value        = p.catatan || '';
-  pelakuFotoBase64 = p.foto || '';
+  document.getElementById('p-nama').value            = p.nama || '';
+  document.getElementById('p-nik').value             = p.nik || '';
+  document.getElementById('p-ttl').value             = p.ttl || '';
+  document.getElementById('p-jk').value              = p.jk || 'Laki-laki';
+  document.getElementById('p-status-keluarga').value = p.statusKeluarga || '';
+  document.getElementById('p-hp').value              = p.hp || '';
+  document.getElementById('p-alamat-ktp').value      = p.alamatKtp || '';
+  document.getElementById('p-alamat-tinggal').value  = p.alamatTinggal || '';
+  document.getElementById('p-catatan').value         = p.catatan || '';
+  pelakuFotoBase64 = getFotoLokal(id);
   const prev = document.getElementById('p-foto-preview');
-  prev.innerHTML = p.foto ? `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">` : '👤';
-  // scroll ke form
+  prev.innerHTML = pelakuFotoBase64
+    ? `<img src="${pelakuFotoBase64}" style="width:100%;height:100%;object-fit:cover">`
+    : '👤';
   document.getElementById('p-nama').scrollIntoView({behavior:'smooth', block:'center'});
   showToast('✏️ Mode edit — perbarui data lalu simpan');
 }
 
-function deletePelaku(id) {
-  pelakuData = pelakuData.filter(p => p.id !== id);
-  savePelakuToStorage();
-  showToast('🗑️ Data pelaku dihapus');
-  renderPelakuList();
+async function deletePelaku(id) {
+  if (!confirm('Hapus data pelaku ini?')) return;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deletePelaku', id })
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    deleteFotoLokal(id);
+    pelakuData = pelakuData.filter(p => p.id !== id);
+    showToast('🗑️ Data pelaku dihapus');
+    renderPelakuList();
+  } catch(err) {
+    showToast('❌ Gagal hapus: ' + err.message);
+  }
 }
 
 function renderPelakuList() {
@@ -2791,7 +2849,7 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
-  loadPelakuFromStorage();
+  await loadPelakuFromStorage();
   await loadKasusFromSheet();
   renderAll();
   renderPiket();
@@ -2988,6 +3046,14 @@ async function loadKasusFromSheet() {
         personelData = json.personel.map(row => ({ ...row, id: Number(row.id) }));
         const maxPId = Math.max(...personelData.map(p => p.id), 0);
         nextPersonelId = maxPId + 1;
+      }
+      // Load pelaku dari Sheet (biodata saja, foto dari localStorage)
+      if (json.pelaku && json.pelaku.length > 0) {
+        pelakuData = json.pelaku.map(row => ({
+          ...row,
+          id: Number(row.id),
+          foto: getFotoLokal(Number(row.id))
+        }));
       }
       gsConnected = true;
       showGsStatus('online');
