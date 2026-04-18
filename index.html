@@ -2673,11 +2673,7 @@ async function savePelaku() {
     const action = editPelakuId ? 'updatePelaku' : 'addPelaku';
     if (editPelakuId) biodata.id = editPelakuId;
 
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action, pelaku: biodata })
-    });
-    const json = await res.json();
+    const json = await postToSheet({ action, pelaku: biodata });
 
     if (!json.ok) throw new Error(json.error);
 
@@ -2742,11 +2738,7 @@ function editPelaku(id) {
 async function deletePelaku(id) {
   if (!confirm('Hapus data pelaku ini?')) return;
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'deletePelaku', id })
-    });
-    const json = await res.json();
+    const json = await postToSheet({ action: 'deletePelaku', id });
     if (!json.ok) throw new Error(json.error);
     deleteFotoLokal(id);
     pelakuData = pelakuData.filter(p => p.id !== id);
@@ -3089,7 +3081,7 @@ function showGsStatus(state) {
   const badge = document.getElementById('gs-status-badge');
   if (!badge) return;
   if (state === 'online') {
-    badge.innerHTML = '🟢 Sheet Terhubung';
+    badge.innerHTML = '🟢 Server Terhubung';
     badge.style.color = '#059669';
     badge.style.background = '#dcfce7';
   } else if (state === 'loading') {
