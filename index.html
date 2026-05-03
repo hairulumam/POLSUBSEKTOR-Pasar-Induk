@@ -1961,12 +1961,11 @@ async function saveEditKasus(id) {
 
   if (gsConnected) {
     try {
-      // Normalisasi: Apps Script pakai key 'waktu', frontend pakai 'waktuKejadian'
-      const payload = {
-        ...k,
-        waktu: k.waktu || k.waktuKejadian || '',
+      // FIX: normalisasi waktu sebelum update ke Sheet
+      const payload = Object.assign({}, k, {
+        waktu:         k.waktuKejadian || k.waktu || '',
         waktuKejadian: k.waktuKejadian || k.waktu || ''
-      };
+      });
       const res = await postToSheet({ action: 'update', kasus: payload });
       if (res && res.ok) showToast('✅ Perubahan tersimpan di Sheet');
       else showToast('⚠️ Tersimpan lokal saja');
@@ -2623,11 +2622,10 @@ function deleteFotoLokal(id) {
 }
 
 async function loadPelakuFromStorage() {
-  // Load biodata dari Sheet, foto dari localStorage
+  // FIX: gunakan jsonpRequest (bukan fetch) agar tidak kena CORS block
   try {
-    const res = await fetch(APPS_SCRIPT_URL);
-    const json = await res.json();
-    if (json.pelaku) {
+    const json = await jsonpRequest(APPS_SCRIPT_URL);
+    if (json && json.pelaku) {
       pelakuData = json.pelaku.map(p => ({
         ...p,
         id: Number(p.id),
@@ -2847,8 +2845,11 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
-  await loadPelakuFromStorage();
+  // FIX: loadKasusFromSheet() sudah load SEMUA data (kasus+personel+pelaku)
+  // Tidak perlu loadPelakuFromStorage() terpisah — cukup satu request
   await loadKasusFromSheet();
+  // Pasang foto lokal ke pelakuData setelah data dari Sheet masuk
+  pelakuData = pelakuData.map(p => ({ ...p, foto: getFotoLokal(Number(p.id)) }));
   renderAll();
   renderPiket();
   loadTtdFromStorage();
@@ -3066,13 +3067,12 @@ async function loadKasusFromSheet() {
 async function saveKasusToSheet(kasus) {
   if (!gsConnected) return null;
   try {
-    // Normalisasi: Apps Script pakai key 'waktu', frontend pakai 'waktuKejadian'
-    // Pastikan keduanya terisi agar tidak hilang saat refresh
-    const payload = {
-      ...kasus,
-      waktu: kasus.waktu || kasus.waktuKejadian || '',
+    // FIX: Apps Script header pakai 'waktu', frontend pakai 'waktuKejadian'
+    // Isi KEDUANYA agar tidak hilang saat refresh
+    const payload = Object.assign({}, kasus, {
+      waktu:         kasus.waktuKejadian || kasus.waktu || '',
       waktuKejadian: kasus.waktuKejadian || kasus.waktu || ''
-    };
+    });
     const json = await postToSheet({ action: 'add', kasus: payload });
     return (json && json.ok) ? json.id : null;
   } catch(err) {
