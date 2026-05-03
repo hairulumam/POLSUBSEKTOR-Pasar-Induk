@@ -1961,7 +1961,13 @@ async function saveEditKasus(id) {
 
   if (gsConnected) {
     try {
-      const res = await postToSheet({ action: 'update', kasus: k });
+      // Normalisasi: Apps Script pakai key 'waktu', frontend pakai 'waktuKejadian'
+      const payload = {
+        ...k,
+        waktu: k.waktu || k.waktuKejadian || '',
+        waktuKejadian: k.waktuKejadian || k.waktu || ''
+      };
+      const res = await postToSheet({ action: 'update', kasus: payload });
       if (res && res.ok) showToast('✅ Perubahan tersimpan di Sheet');
       else showToast('⚠️ Tersimpan lokal saja');
     } catch(e) { showToast('⚠️ Tersimpan lokal saja'); }
@@ -3060,7 +3066,14 @@ async function loadKasusFromSheet() {
 async function saveKasusToSheet(kasus) {
   if (!gsConnected) return null;
   try {
-    const json = await postToSheet({ action: 'add', kasus });
+    // Normalisasi: Apps Script pakai key 'waktu', frontend pakai 'waktuKejadian'
+    // Pastikan keduanya terisi agar tidak hilang saat refresh
+    const payload = {
+      ...kasus,
+      waktu: kasus.waktu || kasus.waktuKejadian || '',
+      waktuKejadian: kasus.waktuKejadian || kasus.waktu || ''
+    };
+    const json = await postToSheet({ action: 'add', kasus: payload });
     return (json && json.ok) ? json.id : null;
   } catch(err) {
     console.warn('Gagal simpan:', err.message);
