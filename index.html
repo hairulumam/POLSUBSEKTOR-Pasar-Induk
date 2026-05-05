@@ -911,8 +911,7 @@ body.view-mode .btn-green {
                 <option>Perkelahian / Penganiayaan</option>
                 <option>Pengeroyokan</option>
                 <option>Narkoba</option>
-                <option>Pengguna Obat Terlarang</option>
-                <option>Meninggal Dunia</option>
+                <option>Pelanggaran Lalu Lintas</option>
                 <option>Kebakaran</option>
                 <option>Lain-lain</option>
               </select>
@@ -1175,7 +1174,7 @@ body.view-mode .btn-green {
             <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">TTL</span><div id="ppc-ttl" style="margin-top:1px;font-weight:600"></div></div>
             <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Kelamin</span><div id="ppc-jk" style="margin-top:1px;font-weight:600"></div></div>
             <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">No. HP</span><div id="ppc-hp" style="margin-top:1px;font-weight:600"></div></div>
-            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Status</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
+            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Pekerjaan</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
             <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat KTP</span><div id="ppc-alamat-ktp" style="margin-top:1px;font-weight:600"></div></div>
             <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat Tinggal</span><div id="ppc-alamat-tinggal" style="margin-top:1px;font-weight:600"></div></div>
             <div id="ppc-catatan-wrap" style="grid-column:1/-1;display:none"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Catatan</span><div id="ppc-catatan" style="margin-top:1px;opacity:0.85;line-height:1.5"></div></div>
@@ -1356,8 +1355,8 @@ body.view-mode .btn-green {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Status (Anak / Istri / Suami dll)</label>
-            <input type="text" class="form-input" id="p-status-keluarga" placeholder="cth: Anak, Suami, Istri">
+            <label class="form-label">Pekerjaan</label>
+            <input type="text" class="form-input" id="p-status-keluarga" placeholder="cth: Pedagang, Buruh, Swasta, PNS">
           </div>
           <div class="form-group">
             <label class="form-label">No. HP / Keluarga</label>
@@ -1556,7 +1555,7 @@ function addKasusSimpel() {
     tkp,
     tsk:       document.getElementById('fs-tsk').value.trim(),
     saksi:'', pasal:'',
-    modus:     document.getElementById('fs-modus').value.trim(),
+    modus:     document.getElementById('fs-modus') ? document.getElementById('fs-modus').value.trim() : '',
     bb:        document.getElementById('fs-bb').value.trim() || 'Nihil',
     kerugian:  document.getElementById('fs-kerugian').value.trim() || 'Nihil',
     status:    document.getElementById('fs-status').value,
@@ -1568,7 +1567,8 @@ function addKasusSimpel() {
 
   // Reset form simpel
   ['fs-waktu','fs-tkp','fs-tsk','fs-bb','fs-kerugian','fs-pelapor','fs-modus'].forEach(id => {
-    document.getElementById(id).value = '';
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
   document.getElementById('fs-jenis').value = '';
   showToast('⏳ Menyimpan ke Google Sheet...');
@@ -1964,7 +1964,12 @@ async function saveEditKasus(id) {
 
   if (gsConnected) {
     try {
-      const res = await postToSheet({ action: 'update', kasus: k });
+      // FIX: normalisasi waktu sebelum update ke Sheet
+      const payload = Object.assign({}, k, {
+        waktu:         k.waktuKejadian || k.waktu || '',
+        waktuKejadian: k.waktuKejadian || k.waktu || ''
+      });
+      const res = await postToSheet({ action: 'update', kasus: payload });
       if (res && res.ok) showToast('✅ Perubahan tersimpan di Sheet');
       else showToast('⚠️ Tersimpan lokal saja');
     } catch(e) { showToast('⚠️ Tersimpan lokal saja'); }
@@ -2620,19 +2625,19 @@ function deleteFotoLokal(id) {
 }
 
 async function loadPelakuFromStorage() {
-  // Load biodata dari Sheet, foto dari localStorage
+  // FIX: pakai jsonpRequest bukan fetch() agar tidak kena CORS block
   try {
-    const res = await fetch(APPS_SCRIPT_URL);
-    const json = await res.json();
-    if (json.pelaku) {
+    const json = await jsonpRequest(APPS_SCRIPT_URL);
+    if (json && json.pelaku) {
       pelakuData = json.pelaku.map(p => ({
         ...p,
         id: Number(p.id),
-        foto: getFotoLokal(p.id)
+        foto: getFotoLokal(p.id),
+        pekerjaan:      p.pekerjaan      || p.statusKeluarga || '',
+        statusKeluarga: p.statusKeluarga || p.pekerjaan      || ''
       }));
     }
   } catch(e) {
-    // fallback: coba localStorage lama jika Sheet gagal
     try {
       const raw = localStorage.getItem('pelakuData');
       if (raw) pelakuData = JSON.parse(raw);
@@ -2663,6 +2668,7 @@ async function savePelaku() {
     nik,
     ttl:            document.getElementById('p-ttl').value.trim(),
     jk:             document.getElementById('p-jk').value,
+    pekerjaan:      document.getElementById('p-status-keluarga').value.trim(),
     statusKeluarga: document.getElementById('p-status-keluarga').value.trim(),
     hp:             document.getElementById('p-hp').value.trim(),
     alamatKtp:      document.getElementById('p-alamat-ktp').value.trim(),
@@ -2724,7 +2730,7 @@ function editPelaku(id) {
   document.getElementById('p-nik').value             = p.nik || '';
   document.getElementById('p-ttl').value             = p.ttl || '';
   document.getElementById('p-jk').value              = p.jk || 'Laki-laki';
-  document.getElementById('p-status-keluarga').value = p.statusKeluarga || '';
+  document.getElementById('p-status-keluarga').value = p.pekerjaan || p.statusKeluarga || '';
   document.getElementById('p-hp').value              = p.hp || '';
   document.getElementById('p-alamat-ktp').value      = p.alamatKtp || '';
   document.getElementById('p-alamat-tinggal').value  = p.alamatTinggal || '';
@@ -2767,7 +2773,7 @@ function renderPelakuList() {
         <div style="flex:1;min-width:0">
           <div style="font-weight:800;font-size:0.9rem;margin-bottom:3px">${p.nama}</div>
           ${p.nik ? `<div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text3)">NIK: ${p.nik}</div>` : ''}
-          <div style="font-size:0.72rem;color:var(--text2);margin-top:3px">${[p.ttl, p.jk, p.statusKeluarga].filter(Boolean).join(' · ')}</div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-top:3px">${[p.ttl, p.jk, p.pekerjaan||p.statusKeluarga].filter(Boolean).join(' · ')}</div>
           ${p.hp ? `<div style="font-size:0.72rem;color:var(--text2);margin-top:2px">📞 ${p.hp}</div>` : ''}
           ${p.alamatTinggal ? `<div style="font-size:0.7rem;color:var(--text3);margin-top:2px">📍 ${p.alamatTinggal}</div>` : ''}
         </div>
@@ -2799,7 +2805,7 @@ function showPelakuProfile(query) {
   document.getElementById('ppc-ttl').textContent          = found.ttl || '-';
   document.getElementById('ppc-jk').textContent           = found.jk || '-';
   document.getElementById('ppc-hp').textContent           = found.hp || '-';
-  document.getElementById('ppc-status-kel').textContent   = found.statusKeluarga || '-';
+  document.getElementById('ppc-status-kel').textContent   = found.pekerjaan || found.statusKeluarga || '-';
   document.getElementById('ppc-alamat-ktp').textContent   = found.alamatKtp || '-';
   document.getElementById('ppc-alamat-tinggal').textContent = found.alamatTinggal || '-';
   document.getElementById('ppc-total-kasus').textContent  = kasusCount + ' kasus';
@@ -2844,8 +2850,10 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
-  await loadPelakuFromStorage();
+  // FIX: loadKasusFromSheet sudah load semua (kasus+personel+pelaku)
+  // Tidak perlu loadPelakuFromStorage() terpisah - hindari double request & race condition
   await loadKasusFromSheet();
+  pelakuData = pelakuData.map(p => ({ ...p, foto: getFotoLokal(Number(p.id)) }));
   renderAll();
   renderPiket();
   loadTtdFromStorage();
@@ -3047,7 +3055,9 @@ async function loadKasusFromSheet() {
         pelakuData = json.pelaku.map(row => ({
           ...row,
           id: Number(row.id),
-          foto: getFotoLokal(Number(row.id))
+          foto: getFotoLokal(Number(row.id)),
+          pekerjaan:      row.pekerjaan      || row.statusKeluarga || '',
+          statusKeluarga: row.statusKeluarga || row.pekerjaan      || ''
         }));
       }
       gsConnected = true;
@@ -3063,7 +3073,12 @@ async function loadKasusFromSheet() {
 async function saveKasusToSheet(kasus) {
   if (!gsConnected) return null;
   try {
-    const json = await postToSheet({ action: 'add', kasus });
+    // FIX: normalisasi waktu - frontend pakai waktuKejadian, Sheet pakai waktu
+    const payload = Object.assign({}, kasus, {
+      waktu:         kasus.waktuKejadian || kasus.waktu || '',
+      waktuKejadian: kasus.waktuKejadian || kasus.waktu || ''
+    });
+    const json = await postToSheet({ action: 'add', kasus: payload });
     return (json && json.ok) ? json.id : null;
   } catch(err) {
     console.warn('Gagal simpan:', err.message);
