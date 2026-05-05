@@ -911,8 +911,7 @@ body.view-mode .btn-green {
                 <option>Perkelahian / Penganiayaan</option>
                 <option>Pengeroyokan</option>
                 <option>Narkoba</option>
-                <option>Meninggal Dunia</option>
-                <option>Pengguna Obat Terlarang</option>
+                <option>Pelanggaran Lalu Lintas</option>
                 <option>Kebakaran</option>
                 <option>Lain-lain</option>
               </select>
@@ -1054,8 +1053,7 @@ body.view-mode .btn-green {
                 <option>Perkelahian / Penganiayaan</option>
                 <option>Pengeroyokan</option>
                 <option>Narkoba</option>
-                <option>Meninggal Dunia</option>
-                <option>Pengguna Obat Terlarang</option>
+                <option>Pelanggaran Lalu Lintas</option>
                 <option>Kebakaran</option>
                 <option>Lain-lain</option>
               </select>
@@ -1174,7 +1172,7 @@ body.view-mode .btn-green {
             <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">TTL</span><div id="ppc-ttl" style="margin-top:1px;font-weight:600"></div></div>
             <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Kelamin</span><div id="ppc-jk" style="margin-top:1px;font-weight:600"></div></div>
             <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">No. HP</span><div id="ppc-hp" style="margin-top:1px;font-weight:600"></div></div>
-            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Status</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
+            <div><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Pekerjaan</span><div id="ppc-status-kel" style="margin-top:1px;font-weight:600"></div></div>
             <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat KTP</span><div id="ppc-alamat-ktp" style="margin-top:1px;font-weight:600"></div></div>
             <div style="grid-column:1/-1"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Alamat Tinggal</span><div id="ppc-alamat-tinggal" style="margin-top:1px;font-weight:600"></div></div>
             <div id="ppc-catatan-wrap" style="grid-column:1/-1;display:none"><span style="opacity:0.5;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">Catatan</span><div id="ppc-catatan" style="margin-top:1px;opacity:0.85;line-height:1.5"></div></div>
@@ -1355,8 +1353,8 @@ body.view-mode .btn-green {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Status (Anak / Istri / Suami dll)</label>
-            <input type="text" class="form-input" id="p-status-keluarga" placeholder="cth: Anak, Suami, Istri">
+            <label class="form-label">Pekerjaan</label>
+            <input type="text" class="form-input" id="p-status-keluarga" placeholder="cth: Pedagang, Buruh, Swasta, PNS">
           </div>
           <div class="form-group">
             <label class="form-label">No. HP / Keluarga</label>
@@ -1963,12 +1961,7 @@ async function saveEditKasus(id) {
 
   if (gsConnected) {
     try {
-      // FIX: normalisasi waktu sebelum update ke Sheet
-      const payload = Object.assign({}, k, {
-        waktu:         k.waktuKejadian || k.waktu || '',
-        waktuKejadian: k.waktuKejadian || k.waktu || ''
-      });
-      const res = await postToSheet({ action: 'update', kasus: payload });
+      const res = await postToSheet({ action: 'update', kasus: k });
       if (res && res.ok) showToast('✅ Perubahan tersimpan di Sheet');
       else showToast('⚠️ Tersimpan lokal saja');
     } catch(e) { showToast('⚠️ Tersimpan lokal saja'); }
@@ -2624,10 +2617,11 @@ function deleteFotoLokal(id) {
 }
 
 async function loadPelakuFromStorage() {
-  // FIX: gunakan jsonpRequest (bukan fetch) agar tidak kena CORS block
+  // Load biodata dari Sheet, foto dari localStorage
   try {
-    const json = await jsonpRequest(APPS_SCRIPT_URL);
-    if (json && json.pelaku) {
+    const res = await fetch(APPS_SCRIPT_URL);
+    const json = await res.json();
+    if (json.pelaku) {
       pelakuData = json.pelaku.map(p => ({
         ...p,
         id: Number(p.id),
@@ -2666,6 +2660,7 @@ async function savePelaku() {
     nik,
     ttl:            document.getElementById('p-ttl').value.trim(),
     jk:             document.getElementById('p-jk').value,
+    pekerjaan:      document.getElementById('p-status-keluarga').value.trim(),
     statusKeluarga: document.getElementById('p-status-keluarga').value.trim(),
     hp:             document.getElementById('p-hp').value.trim(),
     alamatKtp:      document.getElementById('p-alamat-ktp').value.trim(),
@@ -2727,7 +2722,7 @@ function editPelaku(id) {
   document.getElementById('p-nik').value             = p.nik || '';
   document.getElementById('p-ttl').value             = p.ttl || '';
   document.getElementById('p-jk').value              = p.jk || 'Laki-laki';
-  document.getElementById('p-status-keluarga').value = p.statusKeluarga || '';
+  document.getElementById('p-status-keluarga').value = p.pekerjaan || p.statusKeluarga || '';
   document.getElementById('p-hp').value              = p.hp || '';
   document.getElementById('p-alamat-ktp').value      = p.alamatKtp || '';
   document.getElementById('p-alamat-tinggal').value  = p.alamatTinggal || '';
@@ -2847,11 +2842,8 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 
 // Load data dari Google Sheet saat halaman pertama dibuka
 async function initApp() {
-  // FIX: loadKasusFromSheet() sudah load SEMUA data (kasus+personel+pelaku)
-  // Tidak perlu loadPelakuFromStorage() terpisah — cukup satu request
+  await loadPelakuFromStorage();
   await loadKasusFromSheet();
-  // Pasang foto lokal ke pelakuData setelah data dari Sheet masuk
-  pelakuData = pelakuData.map(p => ({ ...p, foto: getFotoLokal(Number(p.id)) }));
   renderAll();
   renderPiket();
   loadTtdFromStorage();
@@ -3053,7 +3045,10 @@ async function loadKasusFromSheet() {
         pelakuData = json.pelaku.map(row => ({
           ...row,
           id: Number(row.id),
-          foto: getFotoLokal(Number(row.id))
+          foto: getFotoLokal(Number(row.id)),
+          // Alias: data lama pakai statusKeluarga, baru pakai pekerjaan
+          pekerjaan:      row.pekerjaan      || row.statusKeluarga || '',
+          statusKeluarga: row.statusKeluarga || row.pekerjaan      || ''
         }));
       }
       gsConnected = true;
@@ -3069,13 +3064,7 @@ async function loadKasusFromSheet() {
 async function saveKasusToSheet(kasus) {
   if (!gsConnected) return null;
   try {
-    // FIX: Apps Script header pakai 'waktu', frontend pakai 'waktuKejadian'
-    // Isi KEDUANYA agar tidak hilang saat refresh
-    const payload = Object.assign({}, kasus, {
-      waktu:         kasus.waktuKejadian || kasus.waktu || '',
-      waktuKejadian: kasus.waktuKejadian || kasus.waktu || ''
-    });
-    const json = await postToSheet({ action: 'add', kasus: payload });
+    const json = await postToSheet({ action: 'add', kasus });
     return (json && json.ok) ? json.id : null;
   } catch(err) {
     console.warn('Gagal simpan:', err.message);
