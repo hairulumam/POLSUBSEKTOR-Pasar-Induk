@@ -1385,7 +1385,7 @@ body.view-mode .btn-green {
             <div>
               <input type="file" id="p-foto-input" accept="image/*" style="display:none" onchange="previewFoto(this)">
               <button class="btn btn-outline btn-sm" onclick="document.getElementById('p-foto-input').click()">📷 Pilih Foto</button>
-              <div style="font-size:0.68rem;color:var(--text3);margin-top:4px">JPG/PNG, max 2MB</div>
+              <div style="font-size:0.68rem;color:var(--text3);margin-top:4px">Auto-kompres: max 800px, JPEG 80%</div>
             </div>
           </div>
         </div>
@@ -2618,12 +2618,51 @@ let pelakuFotoFile = null;  // file object yang akan diupload (bukan base64 lagi
 // ===== UPLOAD/HAPUS FOTO KE SUPABASE STORAGE =====
 async function uploadFoto(file, pelakuId) {
   if (!file) return '';
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = `pelaku_${pelakuId}_${Date.now()}.${ext}`;
-  const { error } = await sb.storage.from('foto-pelaku').upload(path, file, { upsert: true });
+  // File sudah dikompres di previewFoto, langsung upload sebagai .jpg
+  const path = `pelaku_${pelakuId}_${Date.now()}.jpg`;
+  const { error } = await sb.storage.from('foto-pelaku').upload(path, file, {
+    upsert: true,
+    contentType: 'image/jpeg'
+  });
   if (error) { console.error('Upload foto error:', error); return ''; }
   const { data } = sb.storage.from('foto-pelaku').getPublicUrl(path);
   return data.publicUrl;
+}
+
+// ===== KOMPRESI GAMBAR =====
+// Resize gambar ke max 800x800px, convert ke JPEG kualitas 80%
+// Hasil: biasanya 80-200 KB per foto (turun 90-95% dari aslinya)
+function compressImage(file, maxSize = 800, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        // Hitung dimensi baru (jaga aspect ratio)
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; }
+        } else {
+          if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize; }
+        }
+        // Render ke canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // Convert ke blob JPEG
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error('Kompresi gagal'));
+          resolve(blob);
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => reject(new Error('Gambar rusak'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Baca file gagal'));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function deleteFotoCloud(fotoUrl) {
@@ -2664,17 +2703,34 @@ async function loadPelakuFromStorage() {
   }
 }
 
-function previewFoto(input) {
+async function previewFoto(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showToast('⚠️ Foto maksimal 5MB'); return; }
-  pelakuFotoFile = file;  // simpan file untuk diupload nanti
-  const reader = new FileReader();
-  reader.onload = e => {
-    const prev = document.getElementById('p-foto-preview');
-    prev.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  reader.readAsDataURL(file);
+  if (file.size > 20 * 1024 * 1024) { showToast('⚠️ Foto maksimal 20MB'); return; }
+
+  const prev = document.getElementById('p-foto-preview');
+  prev.innerHTML = '⏳';
+  showToast('⏳ Mengkompres foto...');
+
+  try {
+    // Kompres ke max 800x800, JPEG 80%
+    const compressed = await compressImage(file, 800, 0.8);
+    pelakuFotoFile = compressed;
+
+    // Info ukuran sebelum/sesudah
+    const before = (file.size / 1024).toFixed(0);
+    const after  = (compressed.size / 1024).toFixed(0);
+    const persen = (100 - (compressed.size / file.size * 100)).toFixed(0);
+    showToast(`✅ Foto dikompres: ${before} KB → ${after} KB (-${persen}%)`);
+
+    // Preview
+    const url = URL.createObjectURL(compressed);
+    prev.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+  } catch(err) {
+    showToast('❌ Gagal proses foto: ' + err.message);
+    prev.innerHTML = '👤';
+    pelakuFotoFile = null;
+  }
 }
 
 async function savePelaku() {
