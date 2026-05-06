@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POLSUBSEKTOR Pasar Induk – Sistem Laporan Bulanan</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --navy: #0a1628;
@@ -1469,7 +1470,10 @@ let lpCounter = 1; // nomor LP mulai dari 1
 
 // ===== CONFIG =====
 const ADMIN_PIN = '771187';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdS9qUHivKIexdUSQ0Yt6of-gFIZbRhlaCgVWkxkLpUA-H00ofCLV2RZzt_I8tc0Cx/exec';
+// ===== KONFIG SUPABASE =====
+const SUPABASE_URL = 'https://lejcivbdwndpfdhtitjv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlamNpdmJkd25kcGZkaHRpdGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNzA2MzcsImV4cCI6MjA5MzY0NjYzN30.PqA-uofuKMAJNu2N-Na6OESfT7KQRd24P5vIgbb1eMI';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let gsConnected = false;
 
 // ===== DRAFT & REMEMBER FORM =====
@@ -1965,13 +1969,8 @@ async function saveEditKasus(id) {
 
   if (gsConnected) {
     try {
-      // FIX: normalisasi waktu sebelum update ke Sheet
-      const payload = Object.assign({}, k, {
-        waktu:         k.waktuKejadian || k.waktu || '',
-        waktuKejadian: k.waktuKejadian || k.waktu || ''
-      });
-      const res = await postToSheet({ action: 'update', kasus: payload });
-      if (res && res.ok) showToast('✅ Perubahan tersimpan di Sheet');
+      const res = await updateKasusToSheet(k);
+      if (res) showToast('✅ Perubahan tersimpan di server');
       else showToast('⚠️ Tersimpan lokal saja');
     } catch(e) { showToast('⚠️ Tersimpan lokal saja'); }
   } else {
@@ -2228,12 +2227,12 @@ async function addPersonel() {
   personelData.push(personel);
   document.getElementById('f-pnama').value='';
   document.getElementById('f-pnrp').value='';
-  // Simpan ke Google Sheet
+  // Simpan ke Supabase
   if (gsConnected) {
-    showToast('⏳ Menyimpan ke Sheet...');
+    showToast('⏳ Menyimpan...');
     try {
-      const res = await postToSheet({ action: 'addPersonel', personel });
-      if (res && res.ok) { personel.id = Number(res.id); showToast('✅ Personel tersimpan ke Sheet'); }
+      const newId = await addPersonelToSheet(personel);
+      if (newId) { personel.id = newId; showToast('✅ Personel tersimpan'); }
       else showToast('✅ Personel ditambahkan (lokal)');
     } catch(e) { showToast('✅ Personel ditambahkan (lokal)'); }
   } else {
@@ -2245,7 +2244,7 @@ async function addPersonel() {
 async function deletePersonel(id) {
   personelData = personelData.filter(p=>p.id!==id);
   if (gsConnected) {
-    try { await postToSheet({ action: 'deletePersonel', id }); } catch(e) {}
+    try { await deletePersonelFromSheet(id); } catch(e) {}
   }
   showToast('🗑️ Personel dihapus');
   renderAll();
@@ -2610,51 +2609,66 @@ function saveTtdLP() {
 // ===== DAFTAR PELAKU =====
 let pelakuData = [];
 let editPelakuId = null;
-let pelakuFotoBase64 = '';
+let pelakuFotoFile = null;  // file object yang akan diupload (bukan base64 lagi)
 
-// Foto tetap di localStorage, biodata di Sheet
-// Key localStorage foto: 'pelaku_foto_<id>'
+// ===== UPLOAD/HAPUS FOTO KE SUPABASE STORAGE =====
+async function uploadFoto(file, pelakuId) {
+  if (!file) return '';
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `pelaku_${pelakuId}_${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('foto-pelaku').upload(path, file, { upsert: true });
+  if (error) { console.error('Upload foto error:', error); return ''; }
+  const { data } = sb.storage.from('foto-pelaku').getPublicUrl(path);
+  return data.publicUrl;
+}
 
-function saveFotoLokal(id, base64) {
-  try { if (base64) localStorage.setItem('pelaku_foto_' + id, base64); } catch(e) {}
+async function deleteFotoCloud(fotoUrl) {
+  if (!fotoUrl) return;
+  const marker = '/foto-pelaku/';
+  const idx = fotoUrl.indexOf(marker);
+  if (idx === -1) return;
+  const path = fotoUrl.substring(idx + marker.length);
+  try { await sb.storage.from('foto-pelaku').remove([path]); } catch(e) { console.warn('Hapus foto:', e); }
 }
-function getFotoLokal(id) {
-  try { return localStorage.getItem('pelaku_foto_' + id) || ''; } catch(e) { return ''; }
-}
-function deleteFotoLokal(id) {
-  try { localStorage.removeItem('pelaku_foto_' + id); } catch(e) {}
-}
+
+// Stub backward-compat (dipanggil dari beberapa tempat lama)
+function getFotoLokal(id) { return ''; } // foto sekarang di kolom foto_url database
 
 async function loadPelakuFromStorage() {
-  // FIX: pakai jsonpRequest bukan fetch() agar tidak kena CORS block
   try {
-    const json = await jsonpRequest(APPS_SCRIPT_URL);
-    if (json && json.pelaku) {
-      pelakuData = json.pelaku.map(p => ({
-        ...p,
-        id: Number(p.id),
-        foto: getFotoLokal(p.id),
-        pekerjaan:      p.pekerjaan      || p.statusKeluarga || '',
-        statusKeluarga: p.statusKeluarga || p.pekerjaan      || ''
-      }));
-    }
+    const { data, error } = await sb
+      .from('pelaku')
+      .select('*')
+      .order('id', { ascending: true });
+    if (error) throw error;
+    pelakuData = (data || []).map(p => ({
+      id: p.id,
+      nama: p.nama || '',
+      nik: p.nik || '',
+      ttl: p.ttl || '',
+      jk: p.jk || 'Laki-laki',
+      pekerjaan: p.pekerjaan || p.status_keluarga || '',
+      statusKeluarga: p.status_keluarga || p.pekerjaan || '',
+      hp: p.hp || '',
+      alamatKtp: p.alamat_ktp || '',
+      alamatTinggal: p.alamat_tinggal || '',
+      catatan: p.catatan || '',
+      foto: p.foto_url || ''
+    }));
   } catch(e) {
-    try {
-      const raw = localStorage.getItem('pelakuData');
-      if (raw) pelakuData = JSON.parse(raw);
-    } catch(e2) {}
+    console.error('Load pelaku gagal:', e);
   }
 }
 
 function previewFoto(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { showToast('⚠️ Foto maksimal 2MB'); return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('⚠️ Foto maksimal 5MB'); return; }
+  pelakuFotoFile = file;  // simpan file untuk diupload nanti
   const reader = new FileReader();
   reader.onload = e => {
-    pelakuFotoBase64 = e.target.result;
     const prev = document.getElementById('p-foto-preview');
-    prev.innerHTML = `<img src="${pelakuFotoBase64}" style="width:100%;height:100%;object-fit:cover">`;
+    prev.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
   };
   reader.readAsDataURL(file);
 }
@@ -2664,50 +2678,61 @@ async function savePelaku() {
   const nik  = document.getElementById('p-nik').value.trim();
   if (!nama) { showToast('⚠️ Nama pelaku wajib diisi'); return; }
 
+  // Map field ke nama kolom database (snake_case)
   const biodata = {
     nama,
     nik,
-    ttl:            document.getElementById('p-ttl').value.trim(),
-    jk:             document.getElementById('p-jk').value,
-    pekerjaan:      document.getElementById('p-status-keluarga').value.trim(),
-    statusKeluarga: document.getElementById('p-status-keluarga').value.trim(),
-    hp:             document.getElementById('p-hp').value.trim(),
-    alamatKtp:      document.getElementById('p-alamat-ktp').value.trim(),
-    alamatTinggal:  document.getElementById('p-alamat-tinggal').value.trim(),
-    catatan:        document.getElementById('p-catatan').value.trim(),
+    ttl:             document.getElementById('p-ttl').value.trim(),
+    jk:              document.getElementById('p-jk').value,
+    pekerjaan:       document.getElementById('p-status-keluarga').value.trim(),
+    status_keluarga: document.getElementById('p-status-keluarga').value.trim(),
+    hp:              document.getElementById('p-hp').value.trim(),
+    alamat_ktp:      document.getElementById('p-alamat-ktp').value.trim(),
+    alamat_tinggal:  document.getElementById('p-alamat-tinggal').value.trim(),
+    catatan:         document.getElementById('p-catatan').value.trim(),
   };
 
   showToast('⏳ Menyimpan...');
 
   try {
-    const action = editPelakuId ? 'updatePelaku' : 'addPelaku';
-    if (editPelakuId) biodata.id = editPelakuId;
+    let finalId, fotoUrl = '';
 
-    const json = await postToSheet({ action, pelaku: biodata });
-
-    if (!json.ok) throw new Error(json.error);
-
-    const finalId = editPelakuId || json.id;
-
-    // Simpan foto ke localStorage dengan ID yang sudah fix
-    if (pelakuFotoBase64) saveFotoLokal(finalId, pelakuFotoBase64);
-
-    // Update state lokal
     if (editPelakuId) {
-      const idx = pelakuData.findIndex(p => p.id === editPelakuId);
-      if (idx !== -1) pelakuData[idx] = { ...biodata, id: finalId, foto: pelakuFotoBase64 || getFotoLokal(finalId) };
-      showToast('✅ Data pelaku diperbarui');
+      // UPDATE biodata
+      const { error } = await sb.from('pelaku').update(biodata).eq('id', editPelakuId);
+      if (error) throw error;
+      finalId = editPelakuId;
     } else {
-      pelakuData.push({ ...biodata, id: finalId, foto: pelakuFotoBase64 });
-      showToast('✅ Data pelaku disimpan ke Sheet');
+      // INSERT pelaku baru
+      const { data, error } = await sb.from('pelaku').insert(biodata).select().single();
+      if (error) throw error;
+      finalId = data.id;
     }
 
+    // Upload foto kalau user pilih file baru
+    if (pelakuFotoFile) {
+      // Hapus foto lama dulu (kalau ada) saat edit
+      if (editPelakuId) {
+        const old = pelakuData.find(p => p.id === editPelakuId);
+        if (old && old.foto) await deleteFotoCloud(old.foto);
+      }
+      fotoUrl = await uploadFoto(pelakuFotoFile, finalId);
+      if (fotoUrl) {
+        await sb.from('pelaku').update({ foto_url: fotoUrl }).eq('id', finalId);
+      }
+    }
+
+    // Refresh data dari server biar konsisten
+    await loadPelakuFromStorage();
+
+    showToast(editPelakuId ? '✅ Data pelaku diperbarui' : '✅ Data pelaku disimpan');
     editPelakuId = null;
     resetPelakuForm();
     renderPelakuList();
 
   } catch(err) {
-    showToast('❌ Gagal simpan: ' + err.message);
+    showToast('❌ Gagal simpan: ' + (err.message || err));
+    console.error(err);
   }
 }
 
@@ -2719,7 +2744,7 @@ function resetPelakuForm() {
   document.getElementById('p-jk').value = 'Laki-laki';
   document.getElementById('p-foto-preview').innerHTML = '👤';
   document.getElementById('p-foto-input').value = '';
-  pelakuFotoBase64 = '';
+  pelakuFotoFile = null;
   editPelakuId = null;
 }
 
@@ -2736,10 +2761,10 @@ function editPelaku(id) {
   document.getElementById('p-alamat-ktp').value      = p.alamatKtp || '';
   document.getElementById('p-alamat-tinggal').value  = p.alamatTinggal || '';
   document.getElementById('p-catatan').value         = p.catatan || '';
-  pelakuFotoBase64 = getFotoLokal(id);
+  pelakuFotoFile = null; // reset, kalau user gak pilih foto baru, foto lama tetap dipakai
   const prev = document.getElementById('p-foto-preview');
-  prev.innerHTML = pelakuFotoBase64
-    ? `<img src="${pelakuFotoBase64}" style="width:100%;height:100%;object-fit:cover">`
+  prev.innerHTML = p.foto
+    ? `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">`
     : '👤';
   document.getElementById('p-nama').scrollIntoView({behavior:'smooth', block:'center'});
   showToast('✏️ Mode edit — perbarui data lalu simpan');
@@ -2748,14 +2773,18 @@ function editPelaku(id) {
 async function deletePelaku(id) {
   if (!confirm('Hapus data pelaku ini?')) return;
   try {
-    const json = await postToSheet({ action: 'deletePelaku', id });
-    if (!json.ok) throw new Error(json.error);
-    deleteFotoLokal(id);
+    // Hapus foto dari storage dulu (kalau ada)
+    const target = pelakuData.find(p => p.id === id);
+    if (target && target.foto) await deleteFotoCloud(target.foto);
+
+    const { error } = await sb.from('pelaku').delete().eq('id', id);
+    if (error) throw error;
+
     pelakuData = pelakuData.filter(p => p.id !== id);
     showToast('🗑️ Data pelaku dihapus');
     renderPelakuList();
   } catch(err) {
-    showToast('❌ Gagal hapus: ' + err.message);
+    showToast('❌ Gagal hapus: ' + (err.message || err));
   }
 }
 
@@ -2849,12 +2878,10 @@ const mo = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','D
 document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${now.getFullYear()}`;
 
 
-// Load data dari Google Sheet saat halaman pertama dibuka
+// Load data dari Supabase saat halaman pertama dibuka
 async function initApp() {
-  // FIX: loadKasusFromSheet sudah load semua (kasus+personel+pelaku)
-  // Tidak perlu loadPelakuFromStorage() terpisah - hindari double request & race condition
+  // loadKasusFromSheet sudah load semua: kasus + personel + pelaku (termasuk foto_url)
   await loadKasusFromSheet();
-  pelakuData = pelakuData.map(p => ({ ...p, foto: getFotoLokal(Number(p.id)) }));
   renderAll();
   renderPiket();
   loadTtdFromStorage();
@@ -2950,149 +2977,173 @@ function logout() {
   document.getElementById('link-admin').textContent = 'Masuk sebagai administrator';
 }
 
-// ===== GOOGLE SHEETS API FUNCTIONS =====
-
-// ── JSONP helper (bypass CORS untuk GET) ──────────────────
-function jsonpRequest(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'gsCallback_' + Date.now();
-    const script = document.createElement('script');
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error('Timeout'));
-    }, 10000);
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-    window[cbName] = function(data) {
-      cleanup();
-      resolve(data);
-    };
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
-    script.onerror = () => { cleanup(); reject(new Error('Script error')); };
-    document.head.appendChild(script);
-  });
-}
-
-// ── POST via form-encoded (no CORS preflight) ────────────
-function postToSheet(payload) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'gsPost_' + Date.now();
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error('Timeout'));
-    }, 10000);
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cbName];
-    }
-    window[cbName] = function(data) { cleanup(); resolve(data); };
-
-    // Encode payload as URL param + callback
-    const params = new URLSearchParams({
-      payload: JSON.stringify(payload),
-      callback: cbName
-    });
-    const script = document.createElement('script');
-    script.src = APPS_SCRIPT_URL + '?' + params.toString();
-    script.onerror = () => { cleanup(); reject(new Error('Script error')); };
-    document.head.appendChild(script);
-  });
-}
+// ===== SUPABASE API FUNCTIONS =====
 
 async function loadKasusFromSheet() {
-  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('PASTE_YOUR')) {
-    showGsStatus('offline'); return;
-  }
   try {
     showGsStatus('loading');
-    const json = await jsonpRequest(APPS_SCRIPT_URL);
-    if (json.ok) {
-      // Load kasus
-      if (json.data && json.data.length > 0) {
-        kasusData = json.data.map(row => {
-          // Normalisasi nama field dari berbagai kemungkinan nama kolom di Google Sheet
-          function pick(obj, ...keys) {
-            for (const k of keys) {
-              if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
-            }
-            return '';
-          }
-          return {
-            ...row,
-            id: Number(row.id),
-            waktuKejadian: pick(row, 'waktuKejadian', 'waktu', 'waktu_kejadian', 'Waktu Kejadian', 'waktu kejadian', 'WaktuKejadian', 'WAKTU KEJADIAN'),
-            jenis:         pick(row, 'jenis', 'Jenis', 'jenis_kasus', 'Jenis Kasus', 'JENIS', 'JENIS KASUS'),
-            tkp:           pick(row, 'tkp', 'TKP', 'Tkp', 'tempat_kejadian', 'Tempat Kejadian'),
-            tsk:           pick(row, 'tsk', 'TSK', 'Tsk', 'pelaku', 'Pelaku', 'tersangka', 'Tersangka'),
-            bb:            pick(row, 'bb', 'BB', 'Bb', 'barang_bukti', 'Barang Bukti'),
-            kerugian:      pick(row, 'kerugian', 'Kerugian', 'KERUGIAN'),
-            pelaporNama:   pick(row, 'pelaporNama', 'pelapor_nama', 'Pelapor', 'pelapor', 'Nama Pelapor', 'nama_pelapor', 'PELAPOR'),
-            pelaporNik:    pick(row, 'pelaporNik', 'pelapor_nik', 'NIK', 'nik', 'Nik'),
-            status:        pick(row, 'status', 'Status', 'STATUS'),
-            ket:           pick(row, 'ket', 'Ket', 'KET', 'keterangan', 'Keterangan'),
-            nomorLp:       pick(row, 'nomorLp', 'nomor_lp', 'Nomor LP', 'NomorLP', 'NOMOR LP'),
-            penyelidik:    pick(row, 'penyelidik', 'Penyelidik', 'PENYELIDIK'),
-            modus:         pick(row, 'modus', 'Modus', 'MODUS', 'uraian', 'Uraian'),
-            saksi:         pick(row, 'saksi', 'Saksi', 'SAKSI'),
-            pasal:         pick(row, 'pasal', 'Pasal', 'PASAL'),
-          };
-        });
-        const maxId = Math.max(...kasusData.map(k => k.id), 0);
-        nextKasusId = maxId + 1;
-        const lpNums = kasusData.filter(k => k.nomorLp).map(k => parseInt(k.nomorLp.split('/')[2]) || 0);
-        if (lpNums.length > 0) lpCounter = Math.max(...lpNums) + 1;
-      }
-      // Load personel
-      if (json.personel && json.personel.length > 0) {
-        personelData = json.personel.map(row => ({ ...row, id: Number(row.id) }));
-        const maxPId = Math.max(...personelData.map(p => p.id), 0);
-        nextPersonelId = maxPId + 1;
-      }
-      // Load pelaku dari Sheet (biodata saja, foto dari localStorage)
-      if (json.pelaku && json.pelaku.length > 0) {
-        pelakuData = json.pelaku.map(row => ({
-          ...row,
-          id: Number(row.id),
-          foto: getFotoLokal(Number(row.id)),
-          pekerjaan:      row.pekerjaan      || row.statusKeluarga || '',
-          statusKeluarga: row.statusKeluarga || row.pekerjaan      || ''
-        }));
-      }
-      gsConnected = true;
-      showGsStatus('online');
-    } else {
-      showGsStatus('offline');
+
+    // Ambil 3 tabel paralel: kasus, personel, pelaku
+    const [kasusRes, personelRes, pelakuRes] = await Promise.all([
+      sb.from('kasus').select('*').order('id', { ascending: true }),
+      sb.from('personel').select('*').order('id', { ascending: true }),
+      sb.from('pelaku').select('*').order('id', { ascending: true }),
+    ]);
+
+    if (kasusRes.error) throw kasusRes.error;
+
+    // ── KASUS ──
+    const kasusRows = kasusRes.data || [];
+    if (kasusRows.length > 0) {
+      kasusData = kasusRows.map(row => ({
+        id: row.id,
+        waktuKejadian: row.waktu_kejadian || '',
+        jenis:         row.jenis || '',
+        tkp:           row.tkp || '',
+        tsk:           row.tsk || '',
+        bb:            row.bb || '',
+        kerugian:      row.kerugian || '',
+        pelaporNama:   row.pelapor_nama || '',
+        pelaporNik:    row.pelapor_nik || '',
+        status:        row.status || '',
+        ket:           row.ket || '',
+        nomorLp:       row.nomor_lp || '',
+        penyelidik:    row.penyelidik || '',
+        modus:         row.modus || '',
+        saksi:         row.saksi || '',
+        pasal:         row.pasal || '',
+      }));
+      const maxId = Math.max(...kasusData.map(k => k.id), 0);
+      nextKasusId = maxId + 1;
+      const lpNums = kasusData.filter(k => k.nomorLp).map(k => parseInt(k.nomorLp.split('/')[2]) || 0);
+      if (lpNums.length > 0) lpCounter = Math.max(...lpNums) + 1;
     }
+
+    // ── PERSONEL ──
+    if (!personelRes.error && personelRes.data && personelRes.data.length > 0) {
+      personelData = personelRes.data.map(p => ({
+        id: p.id,
+        nama: p.nama || '',
+        pangkat: p.pangkat || '',
+        nrp: p.nrp || '',
+        status: p.status || '',
+        unit: p.unit || ''
+      }));
+      const maxPId = Math.max(...personelData.map(p => p.id), 0);
+      nextPersonelId = maxPId + 1;
+    }
+
+    // ── PELAKU ──
+    if (!pelakuRes.error && pelakuRes.data && pelakuRes.data.length > 0) {
+      pelakuData = pelakuRes.data.map(p => ({
+        id: p.id,
+        nama: p.nama || '',
+        nik: p.nik || '',
+        ttl: p.ttl || '',
+        jk: p.jk || 'Laki-laki',
+        pekerjaan: p.pekerjaan || p.status_keluarga || '',
+        statusKeluarga: p.status_keluarga || p.pekerjaan || '',
+        hp: p.hp || '',
+        alamatKtp: p.alamat_ktp || '',
+        alamatTinggal: p.alamat_tinggal || '',
+        catatan: p.catatan || '',
+        foto: p.foto_url || ''
+      }));
+    }
+
+    gsConnected = true;
+    showGsStatus('online');
   } catch(err) {
-    console.warn('Sheet error:', err.message);
+    console.warn('Supabase error:', err.message || err);
+    gsConnected = false;
     showGsStatus('offline');
   }
 }
+
 async function saveKasusToSheet(kasus) {
   if (!gsConnected) return null;
   try {
-    // FIX: normalisasi waktu - frontend pakai waktuKejadian, Sheet pakai waktu
-    const payload = Object.assign({}, kasus, {
-      waktu:         kasus.waktuKejadian || kasus.waktu || '',
-      waktuKejadian: kasus.waktuKejadian || kasus.waktu || ''
-    });
-    const json = await postToSheet({ action: 'add', kasus: payload });
-    return (json && json.ok) ? json.id : null;
+    // Map field frontend (camelCase) → kolom DB (snake_case)
+    const payload = {
+      waktu_kejadian: kasus.waktuKejadian || '',
+      jenis:          kasus.jenis || '',
+      tkp:            kasus.tkp || '',
+      tsk:            kasus.tsk || '',
+      bb:             kasus.bb || '',
+      kerugian:       kasus.kerugian || '',
+      pelapor_nama:   kasus.pelaporNama || '',
+      pelapor_nik:    kasus.pelaporNik || '',
+      status:         kasus.status || '',
+      ket:            kasus.ket || '',
+      nomor_lp:       kasus.nomorLp || '',
+      penyelidik:     kasus.penyelidik || '',
+      modus:          kasus.modus || '',
+      saksi:          kasus.saksi || '',
+      pasal:          kasus.pasal || '',
+    };
+
+    // Cek apakah ini insert atau update (kalau id sudah ada di DB, lakukan update)
+    if (kasus.id) {
+      // Cek dulu di DB apakah row ini sudah ada
+      const { data: existing } = await sb.from('kasus').select('id').eq('id', kasus.id).maybeSingle();
+      if (existing) {
+        const { error } = await sb.from('kasus').update(payload).eq('id', kasus.id);
+        if (error) throw error;
+        return kasus.id;
+      }
+    }
+
+    // INSERT baru
+    const { data, error } = await sb.from('kasus').insert(payload).select().single();
+    if (error) throw error;
+    return data.id;
   } catch(err) {
-    console.warn('Gagal simpan:', err.message);
+    console.warn('Gagal simpan kasus:', err.message || err);
     return null;
   }
+}
+
+async function updateKasusToSheet(kasus) {
+  // Wrapper untuk update yang dipanggil dari edit form
+  return saveKasusToSheet(kasus);
 }
 
 async function deleteKasusFromSheet(id) {
   if (!gsConnected) return;
   try {
-    await postToSheet({ action: 'delete', id });
+    const { error } = await sb.from('kasus').delete().eq('id', id);
+    if (error) throw error;
   } catch(err) {
-    console.warn('Gagal hapus:', err.message);
+    console.warn('Gagal hapus kasus:', err.message || err);
+  }
+}
+
+async function addPersonelToSheet(personel) {
+  if (!gsConnected) return null;
+  try {
+    const payload = {
+      nama: personel.nama || '',
+      pangkat: personel.pangkat || '',
+      nrp: personel.nrp || '',
+      status: personel.status || '',
+      unit: personel.unit || ''
+    };
+    const { data, error } = await sb.from('personel').insert(payload).select().single();
+    if (error) throw error;
+    return data.id;
+  } catch(err) {
+    console.warn('Gagal simpan personel:', err.message || err);
+    return null;
+  }
+}
+
+async function deletePersonelFromSheet(id) {
+  if (!gsConnected) return;
+  try {
+    const { error } = await sb.from('personel').delete().eq('id', id);
+    if (error) throw error;
+  } catch(err) {
+    console.warn('Gagal hapus personel:', err.message || err);
   }
 }
 
@@ -3104,11 +3155,11 @@ function showGsStatus(state) {
     badge.style.color = '#059669';
     badge.style.background = '#dcfce7';
   } else if (state === 'loading') {
-    badge.innerHTML = '🔄 Menghubungkan Sheet...';
+    badge.innerHTML = '🔄 Menghubungkan ke Supabase...';
     badge.style.color = '#b45309';
     badge.style.background = '#fef3c7';
   } else {
-    badge.innerHTML = '⚫ Sheet Offline (data lokal)';
+    badge.innerHTML = '⚫ Server Offline';
     badge.style.color = '#64748b';
     badge.style.background = '#f1f5f9';
   }
