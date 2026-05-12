@@ -914,6 +914,7 @@ body.view-mode .btn-green {
                 <option>Narkoba</option>
                 <option>Pengguna Obat Terlarang</option>
                 <option>Meninggal Dunia</option>
+                <option>Pencobaan Pencurian</option>
                 <option>Kebakaran</option>
                 <option>Lain-lain</option>
               </select>
@@ -1899,7 +1900,7 @@ function editKasus(id) {
         <div class="form-group">
           <label class="form-label">Jenis Kasus</label>
           <select class="form-select" id="edit-jenis">
-            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Pengeroyokan','Narkoba','Pelanggaran Lalu Lintas','Kebakaran','Lain-lain']
+            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Pengeroyokan','Narkoba','Pengguna Obat Terlarang','Meninggal Dunia','Pencobaan Pencurian','Kebakaran','Lain-lain']
               .map(j=>`<option ${k.jenis===j?'selected':''}>${j}</option>`).join('')}
           </select>
         </div>
