@@ -940,16 +940,24 @@ body.view-mode .btn-green {
             </div>
           </div>
           <div class="form-row">
+          <div class="form-row">
             <div class="form-group">
               <label class="form-label">Nama Pelapor / Korban</label>
               <input type="text" class="form-input" id="fs-pelapor" placeholder="cth: Pak Budi">
             </div>
+            <div class="form-group">
+              <label class="form-label">No. HP Pelapor</label>
+              <input type="text" class="form-input" id="fs-pelapor-hp" placeholder="cth: 0812-xxxx-xxxx" inputmode="tel">
+            </div>
+          </div>
+          <div class="form-row">
             <div class="form-group">
               <label class="form-label">Penyelidik / Petugas</label>
               <select class="form-select" id="fs-penyelidik">
                 <option value="">-- Pilih --</option>
               </select>
             </div>
+          </div>
           </div>
           <div class="form-group">
             <label class="form-label">Modus / Uraian Singkat Kejadian</label>
@@ -1549,12 +1557,13 @@ function addKasusSimpel() {
   const jenis    = document.getElementById('fs-jenis').value;
   const tkp      = document.getElementById('fs-tkp').value.trim();
   const pelaporNama = document.getElementById('fs-pelapor').value.trim();
+  const pelaporHp   = document.getElementById('fs-pelapor-hp') ? document.getElementById('fs-pelapor-hp').value.trim() : '';
   if (!jenis || !tkp) { showToast('⚠️ Lengkapi Jenis Kasus dan TKP'); return; }
 
   const newKasus = {
     id: nextKasusId++,
     pelaporNama, pelaporTtl:'', pelaporJk:'', pelaporAgama:'', pelaporPekerjaan:'',
-    pelaporAlamat:'', pelaporNik:'', pelaporHp:'', dilaporkanTgl:'',
+    pelaporAlamat:'', pelaporNik:'', pelaporHp, dilaporkanTgl:'',
     waktuKejadian: document.getElementById('fs-waktu').value.trim(),
     jenis,
     tkp,
@@ -1571,18 +1580,18 @@ function addKasusSimpel() {
   kasusData.push(newKasus);
 
   // Reset form simpel
-  ['fs-waktu','fs-tkp','fs-tsk','fs-bb','fs-kerugian','fs-pelapor','fs-modus'].forEach(id => {
+  ['fs-waktu','fs-tkp','fs-tsk','fs-bb','fs-kerugian','fs-pelapor','fs-pelapor-hp','fs-modus'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('fs-jenis').value = '';
-  showToast('⏳ Menyimpan ke Google Sheet...');
+  showToast('⏳ Menyimpan...');
   renderAll();
   saveKasusToSheet(newKasus).then(savedId => {
     if (savedId !== null) {
       const idx = kasusData.findIndex(k => k === newKasus);
       if (idx !== -1) kasusData[idx].id = savedId;
-      showToast('✅ Kasus tersimpan di Google Sheet');
+      showToast('✅ Kasus tersimpan');
       renderAll();
     } else {
       showToast('⚠️ Tersimpan lokal saja');
@@ -1764,7 +1773,7 @@ function renderKriminalitas() {
           <div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">TSK / Pelaku</span><div style="margin-top:2px;font-weight:600;color:var(--navy)">${k.tsk||'-'}</div></div>
           <div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Barang Bukti</span><div style="margin-top:2px">${k.bb||'Nihil'}</div></div>
           <div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Kerugian</span><div style="margin-top:2px;font-weight:700;color:var(--red)">${k.kerugian||'Nihil'}</div></div>
-          <div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Pelapor / Korban</span><div style="margin-top:2px">${k.pelaporNama||'-'}</div></div>
+          <div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Pelapor / Korban</span><div style="margin-top:2px">${k.pelaporNama||'-'}${k.pelaporHp ? `<br><span style="color:var(--text3);font-size:0.72rem">📞 ${k.pelaporHp}</span>` : ''}</div></div>
           <div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Status</span><div style="margin-top:4px">${statusBadge(k.status)}</div></div>
           ${k.modus ? `<div style="grid-column:1/-1"><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Uraian Singkat</span><div style="margin-top:4px;line-height:1.6;color:var(--text)">${k.modus}</div></div>` : ''}
           ${k.penyelidik ? `<div><span style="font-weight:700;color:var(--text3);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px">Penyelidik</span><div style="margin-top:2px">${k.penyelidik}</div></div>` : ''}
@@ -3065,6 +3074,7 @@ async function loadKasusFromSheet() {
         kerugian:      row.kerugian || '',
         pelaporNama:   row.pelapor_nama || '',
         pelaporNik:    row.pelapor_nik || '',
+        pelaporHp:     row.pelapor_hp  || '',
         status:        row.status || '',
         ket:           row.ket || '',
         nomorLp:       row.nomor_lp || '',
@@ -3133,6 +3143,7 @@ async function saveKasusToSheet(kasus) {
       kerugian:       kasus.kerugian || '',
       pelapor_nama:   kasus.pelaporNama || '',
       pelapor_nik:    kasus.pelaporNik || '',
+      pelapor_hp:     kasus.pelaporHp  || '',
       status:         kasus.status || '',
       ket:            kasus.ket || '',
       nomor_lp:       kasus.nomorLp || '',
