@@ -914,7 +914,6 @@ body.view-mode .btn-green {
                 <option>Narkoba</option>
                 <option>Pengguna Obat Terlarang</option>
                 <option>Meninggal Dunia</option>
-                <option>Pencobaan Pencurian</option>
                 <option>Kebakaran</option>
                 <option>Lain-lain</option>
               </select>
@@ -1690,8 +1689,10 @@ function toggleKasusRow(row, id) {
 let tskSearchQuery = '';
 let kasusPage = 1;
 const KASUS_PER_PAGE = 10;
+let dataReady = false;
 
 function filterKasusByTsk() {
+  if (!dataReady) return; // tunggu data dari Supabase siap dulu
   tskSearchQuery = document.getElementById('search-tsk').value.trim().toLowerCase();
   kasusPage = 1;
   showPelakuProfile(tskSearchQuery);
@@ -1900,7 +1901,7 @@ function editKasus(id) {
         <div class="form-group">
           <label class="form-label">Jenis Kasus</label>
           <select class="form-select" id="edit-jenis">
-            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Pengeroyokan','Narkoba','Pengguna Obat Terlarang','Meninggal Dunia','Pencobaan Pencurian','Kebakaran','Lain-lain']
+            ${['Pencurian','Pencurian dengan Kekerasan','Penipuan / Penggelapan','Premanisme / Pungli','Perkelahian / Penganiayaan','Pengeroyokan','Narkoba','Pelanggaran Lalu Lintas','Kebakaran','Lain-lain']
               .map(j=>`<option ${k.jenis===j?'selected':''}>${j}</option>`).join('')}
           </select>
         </div>
@@ -2891,16 +2892,38 @@ function renderPelakuList() {
 function showPelakuProfile(query) {
   const card = document.getElementById('pelaku-profile-card');
   if (!query || query.length < 2) { card.style.display = 'none'; return; }
-  // Cari pelaku yang namanya mengandung query
-  const found = pelakuData.find(p =>
+
+  // Cari di tabel pelaku dulu (data lengkap)
+  let found = pelakuData.find(p =>
     (p.nama||'').toLowerCase().includes(query) ||
     (p.nik||'').toLowerCase().includes(query)
   );
+
+  // Fallback: jika tidak ada di tabel pelaku, cari dari field tsk di kasusData
+  if (!found) {
+    const kasusMatch = kasusData.find(k =>
+      (k.tsk||'').toLowerCase().includes(query)
+    );
+    if (kasusMatch && kasusMatch.tsk) {
+      found = {
+        nama: kasusMatch.tsk,
+        nik: '', ttl: '-', jk: '-',
+        hp: '-', pekerjaan: '-',
+        alamatKtp: '-', alamatTinggal: '-',
+        catatan: 'Data belum lengkap — tambahkan di menu Pelaku', foto: ''
+      };
+    }
+  }
+
   if (!found) { card.style.display = 'none'; return; }
 
-  const kasusCount = kasusData.filter(k =>
-    (k.tsk||'').toLowerCase().includes((found.nama||'').toLowerCase()) && found.nama.length > 2
-  ).length;
+  // Hitung jumlah kasus — normalisasi spasi & kapitalisasi
+  const namaQuery = (found.nama||'').toLowerCase().trim();
+  const kasusCount = namaQuery.length > 2
+    ? kasusData.filter(k =>
+        (k.tsk||'').toLowerCase().trim().includes(namaQuery)
+      ).length
+    : 0;
 
   document.getElementById('ppc-nama').textContent         = found.nama;
   document.getElementById('ppc-nik').textContent          = found.nik ? 'NIK: ' + found.nik : '';
@@ -2954,6 +2977,7 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 async function initApp() {
   // loadKasusFromSheet sudah load semua: kasus + personel + pelaku (termasuk foto_url)
   await loadKasusFromSheet();
+  dataReady = true; // tandai data sudah siap, search boleh dijalankan
   renderAll();
   renderPiket();
   loadTtdFromStorage();
