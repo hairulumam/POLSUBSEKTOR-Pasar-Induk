@@ -969,6 +969,7 @@ body.view-mode .btn-green {
               <select class="form-select" id="fs-status">
                 <option value="Proses">Dalam Proses</option>
                 <option value="Selesai">Selesai / SP3</option>
+                <option value="RJ">Selesai / RJ</option>
                 <option value="Limpah">Dilimpahkan</option>
               </select>
             </div>
@@ -1116,6 +1117,7 @@ body.view-mode .btn-green {
               <select class="form-select" id="f-status">
                 <option value="Proses">Dalam Proses</option>
                 <option value="Selesai">Selesai / SP3</option>
+                <option value="RJ">Selesai / RJ</option>
                 <option value="Limpah">Dilimpahkan</option>
               </select>
             </div>
@@ -1605,12 +1607,14 @@ function addKasusSimpel() {
 function renderDashboard() {
   const masuk = kasusData.length;
   const selesai = kasusData.filter(k=>k.status==='Selesai').length;
+  const rj = kasusData.filter(k=>k.status==='RJ').length;
+  const selesaiTotal = selesai + rj; // SP3 + RJ sama-sama dihitung selesai untuk CR
   const proses = kasusData.filter(k=>k.status==='Proses').length;
-  const cr = masuk>0 ? Math.round(selesai/masuk*100) : 0;
+  const cr = masuk>0 ? Math.round(selesaiTotal/masuk*100) : 0;
   const aktif = personelData.filter(p=>p.status==='Aktif').length;
 
   document.getElementById('d-total-masuk').textContent = masuk;
-  document.getElementById('d-total-selesai').textContent = selesai;
+  document.getElementById('d-total-selesai').textContent = selesaiTotal;
   document.getElementById('d-total-proses').textContent = proses;
   document.getElementById('d-personel-aktif').textContent = aktif;
   document.getElementById('d-clearance').textContent = `CR: ${cr}%`;
@@ -1667,7 +1671,8 @@ function renderDashboard() {
 }
 
 function statusBadge(s) {
-  if (s==='Selesai') return `<span class="badge badge-hijau">✓ Selesai</span>`;
+  if (s==='Selesai') return `<span class="badge badge-hijau">✓ SP3</span>`;
+  if (s==='RJ') return `<span class="badge badge-hijau">✓ RJ</span>`;
   if (s==='Proses') return `<span class="badge badge-kuning">⏳ Proses</span>`;
   return `<span class="badge badge-abu">↗ Limpah</span>`;
 }
@@ -1689,10 +1694,8 @@ function toggleKasusRow(row, id) {
 let tskSearchQuery = '';
 let kasusPage = 1;
 const KASUS_PER_PAGE = 10;
-let dataReady = false;
 
 function filterKasusByTsk() {
-  if (!dataReady) return; // tunggu data dari Supabase siap dulu
   tskSearchQuery = document.getElementById('search-tsk').value.trim().toLowerCase();
   kasusPage = 1;
   showPelakuProfile(tskSearchQuery);
@@ -1936,6 +1939,7 @@ function editKasus(id) {
           <select class="form-select" id="edit-status">
             <option ${k.status==='Proses'?'selected':''} value="Proses">Dalam Proses</option>
             <option ${k.status==='Selesai'?'selected':''} value="Selesai">Selesai / SP3</option>
+            <option ${k.status==='RJ'?'selected':''} value="RJ">Selesai / RJ</option>
             <option ${k.status==='Limpah'?'selected':''} value="Limpah">Dilimpahkan</option>
           </select>
         </div>
@@ -2368,9 +2372,11 @@ function generateLaporan() {
   const filtered = kasusData.filter(k => matchBulanTahun(k.waktu || k.waktuKejadian));
   const masuk = filtered.length;
   const selesai = filtered.filter(k=>k.status==='Selesai').length;
+  const rj = filtered.filter(k=>k.status==='RJ').length;
+  const selesaiTotal = selesai + rj;
   const proses = filtered.filter(k=>k.status==='Proses').length;
   const limpah = filtered.filter(k=>k.status==='Limpah').length;
-  const cr = masuk>0 ? Math.round(selesai/masuk*100) : 0;
+  const cr = masuk>0 ? Math.round(selesaiTotal/masuk*100) : 0;
   const totalPersonel = personelData.length;
   const aktifPersonel = personelData.filter(p=>p.status==='Aktif').length;
 
@@ -2400,7 +2406,8 @@ function generateLaporan() {
       </table>
       <table class="print-table" style="margin-top:8px">
         <tr><th>Keterangan</th><th>Jumlah</th><th>%</th></tr>
-        ${selesai > 0 ? `<tr><td>Selesai / SP3</td><td>${selesai}</td><td>${cr}%</td></tr>` : ''}
+        ${selesai > 0 ? `<tr><td>Selesai / SP3</td><td>${selesai}</td><td>${masuk>0?Math.round(selesai/masuk*100):0}%</td></tr>` : ''}
+        ${rj > 0 ? `<tr><td>Selesai / RJ</td><td>${rj}</td><td>${masuk>0?Math.round(rj/masuk*100):0}%</td></tr>` : ''}
         ${proses > 0 ? `<tr><td>Dalam Proses</td><td>${proses}</td><td>${masuk>0?Math.round(proses/masuk*100):0}%</td></tr>` : ''}
         ${limpah > 0 ? `<tr><td>Dilimpahkan</td><td>${limpah}</td><td>${masuk>0?Math.round(limpah/masuk*100):0}%</td></tr>` : ''}
         <tr style="font-weight:800"><td><strong>Crime Clearance Rate</strong></td><td colspan="2"><strong>${cr}%</strong></td></tr>
@@ -2892,38 +2899,16 @@ function renderPelakuList() {
 function showPelakuProfile(query) {
   const card = document.getElementById('pelaku-profile-card');
   if (!query || query.length < 2) { card.style.display = 'none'; return; }
-
-  // Cari di tabel pelaku dulu (data lengkap)
-  let found = pelakuData.find(p =>
+  // Cari pelaku yang namanya mengandung query
+  const found = pelakuData.find(p =>
     (p.nama||'').toLowerCase().includes(query) ||
     (p.nik||'').toLowerCase().includes(query)
   );
-
-  // Fallback: jika tidak ada di tabel pelaku, cari dari field tsk di kasusData
-  if (!found) {
-    const kasusMatch = kasusData.find(k =>
-      (k.tsk||'').toLowerCase().includes(query)
-    );
-    if (kasusMatch && kasusMatch.tsk) {
-      found = {
-        nama: kasusMatch.tsk,
-        nik: '', ttl: '-', jk: '-',
-        hp: '-', pekerjaan: '-',
-        alamatKtp: '-', alamatTinggal: '-',
-        catatan: 'Data belum lengkap — tambahkan di menu Pelaku', foto: ''
-      };
-    }
-  }
-
   if (!found) { card.style.display = 'none'; return; }
 
-  // Hitung jumlah kasus — normalisasi spasi & kapitalisasi
-  const namaQuery = (found.nama||'').toLowerCase().trim();
-  const kasusCount = namaQuery.length > 2
-    ? kasusData.filter(k =>
-        (k.tsk||'').toLowerCase().trim().includes(namaQuery)
-      ).length
-    : 0;
+  const kasusCount = kasusData.filter(k =>
+    (k.tsk||'').toLowerCase().includes((found.nama||'').toLowerCase()) && found.nama.length > 2
+  ).length;
 
   document.getElementById('ppc-nama').textContent         = found.nama;
   document.getElementById('ppc-nik').textContent          = found.nik ? 'NIK: ' + found.nik : '';
@@ -2977,7 +2962,6 @@ document.getElementById('period-label').textContent = `${mo[now.getMonth()]} ${n
 async function initApp() {
   // loadKasusFromSheet sudah load semua: kasus + personel + pelaku (termasuk foto_url)
   await loadKasusFromSheet();
-  dataReady = true; // tandai data sudah siap, search boleh dijalankan
   renderAll();
   renderPiket();
   loadTtdFromStorage();
